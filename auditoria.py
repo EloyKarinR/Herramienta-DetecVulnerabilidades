@@ -33,6 +33,7 @@ from fpdf import FPDF
 
 EXTENSIONES_CODIGO = (".py", ".php", ".js", ".java", ".ts", ".c", ".cpp", ".h")
 CARPETAS_IGNORADAS = {"node_modules", "vendor", "venv", ".venv", ".git", "__pycache__"}
+CARPETA_HERRAMIENTA = os.path.dirname(os.path.abspath(__file__))
 
 REGLAS = [
     {
@@ -136,7 +137,14 @@ def es_comentario(linea):
 def buscar_archivos_codigo(ruta):
     archivos_encontrados = []
     for carpeta_actual, subcarpetas, archivos in os.walk(ruta):
-        subcarpetas[:] = [s for s in subcarpetas if s not in CARPETAS_IGNORADAS]
+        if os.path.abspath(carpeta_actual) == CARPETA_HERRAMIENTA:
+            subcarpetas[:] = []
+            continue
+        subcarpetas[:] = [
+            s for s in subcarpetas
+            if s not in CARPETAS_IGNORADAS
+            and os.path.abspath(os.path.join(carpeta_actual, s)) != CARPETA_HERRAMIENTA
+        ]
         for archivo in archivos:
             if archivo.endswith(EXTENSIONES_CODIGO):
                 ruta_completa = os.path.join(carpeta_actual, archivo)
