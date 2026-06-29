@@ -5,7 +5,16 @@ import re
 import subprocess
 import sys
 from datetime import date
-from fpdf import FPDF
+
+try:
+    from fpdf import FPDF
+except ImportError:
+    print("Instalando dependencias por primera vez, espera un momento...")
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "fpdf2", "bandit", "semgrep"],
+        check=True
+    )
+    from fpdf import FPDF
 
 EXTENSIONES_CODIGO = (".py", ".php", ".js", ".java", ".ts", ".c", ".cpp", ".h")
 CARPETAS_IGNORADAS = {"node_modules", "vendor", "venv", ".venv", ".git", "__pycache__"}
