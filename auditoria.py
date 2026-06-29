@@ -5,16 +5,30 @@ import re
 import subprocess
 import sys
 from datetime import date
+import importlib.util
 
-try:
-    from fpdf import FPDF
-except ImportError:
-    print("Instalando dependencias por primera vez, espera un momento...")
-    subprocess.run(
-        [sys.executable, "-m", "pip", "install", "fpdf2", "bandit", "semgrep"],
-        check=True
-    )
-    from fpdf import FPDF
+
+def verificar_dependencias():
+    paquetes = {
+        "fpdf":    "fpdf2",
+        "bandit":  "bandit",
+        "semgrep": "semgrep",
+    }
+    faltantes = [
+        pip_name
+        for modulo, pip_name in paquetes.items()
+        if importlib.util.find_spec(modulo) is None
+    ]
+    if faltantes:
+        print(f"Instalando dependencias faltantes: {', '.join(faltantes)}...")
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install"] + faltantes,
+            check=True
+        )
+        print()
+
+verificar_dependencias()
+from fpdf import FPDF
 
 EXTENSIONES_CODIGO = (".py", ".php", ".js", ".java", ".ts", ".c", ".cpp", ".h")
 CARPETAS_IGNORADAS = {"node_modules", "vendor", "venv", ".venv", ".git", "__pycache__"}
