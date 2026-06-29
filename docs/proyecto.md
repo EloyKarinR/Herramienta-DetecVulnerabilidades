@@ -62,14 +62,19 @@ Los tres se instalan automáticamente con `pip install -r requirements.txt`.
 
 - [x] CLI básico con argparse
 - [x] Descubrimiento de archivos por extensión
-- [x] 9 reglas de detección por regex (SEC-01 a SEC-09)
+- [x] 9 reglas de detección por regex (SEC-01 a SEC-09) con OWASP/CWE/CVSS
 - [x] Filtro de carpetas ignoradas (node_modules, venv, etc.)
 - [x] Filtro de comentarios (es_comentario)
-- [ ] Integración de Bandit
-- [ ] Integración de Semgrep
-- [ ] Reporte en PDF
+- [x] Integración de Bandit (Python/Django/Flask)
+- [x] Integración de Semgrep (PHP, JS, Java, TS, C/C++)
+- [x] Activación inteligente de motores según lenguajes del proyecto
+- [x] Autoinstalación de dependencias (fpdf2, bandit, semgrep)
+- [x] Reporte en PDF en español (portada, resumen ejecutivo, hallazgos)
+- [x] La herramienta se excluye a sí misma del análisis automáticamente
+- [x] Publicado en GitHub
+- [ ] Priorizar archivos sensibles (login, db, config, auth)
 - [ ] README para GitHub
-- [ ] Publicación en GitHub
+- [ ] Casos de estudio (Capítulo IV)
 
 ---
 

@@ -1,5 +1,56 @@
 # Bitácora de Desarrollo
 
+---
+
+## 2026-06-29 — Sesión de implementación completa
+
+### Decisiones tomadas
+
+**1. Arquitectura de tres motores confirmada**
+- Bandit para Python (instalable por pip, 70+ reglas)
+- Semgrep para PHP, JS, Java, TS, C/C++ (instalable por pip, reglas OWASP)
+- Regex propio como complemento en todos los lenguajes
+- Activación inteligente: cada motor solo corre si detecta archivos de su lenguaje
+
+**2. Autoinstalación de dependencias**
+La herramienta verifica al inicio si `fpdf2`, `bandit` y `semgrep` están instalados usando `importlib.util.find_spec()`. Solo instala lo que falta. El estudiante solo necesita `git clone` + `python auditoria.py`.
+
+**3. Reglas como datos (REGLAS list)**
+Se refactorizó de funciones separadas por regla a una lista de diccionarios con una función genérica `detectar_por_regex()`. Agregar reglas nuevas es solo agregar un diccionario.
+
+**4. Reporte PDF en español con fpdf2**
+- Portada: nombre, proyecto auditado, fecha, total de vulnerabilidades
+- Resumen ejecutivo: tabla por severidad con colores
+- Hallazgos detallados: OWASP/CWE/CVSS, archivo, línea, código, corrección
+- Bugs resueltos: FPDFException por `multi_cell(0,...)`, UnicodeError por emojis en código, alineación con `new_x="LMARGIN"`
+
+**5. La herramienta se excluye a sí misma**
+`CARPETA_HERRAMIENTA = os.path.dirname(os.path.abspath(__file__))` detecta la carpeta donde vive `auditoria.py` y la excluye del walk. Evita que se audite a sí misma cuando está clonada dentro del proyecto del estudiante.
+
+**6. Rama main unificada**
+Se resolvió conflicto entre rama `master` (nuestros commits) y `main` (commit vacío inicial de GitHub). Se hizo force push de `master` sobre `main` y se eliminó `master`. El repo ahora tiene solo una rama: `main`.
+
+### Bugs encontrados y resueltos en esta sesión
+
+| Bug | Causa | Solución |
+|---|---|---|
+| Bandit escaneaba .venv | Sin filtro de exclusión | `--exclude` con CARPETAS_IGNORADAS |
+| FPDFException (espacio insuficiente) | `multi_cell(0,...)` con `align="C"` | Usar `pdf.epw` como ancho |
+| UnicodeEncodeError (emojis) | Fuente Courier no soporta Unicode | Función `limpiar_pdf()` |
+| Texto desordenado en PDF | `multi_cell` no resetea X | Agregar `new_x="LMARGIN"` |
+| Herramienta se auditaba a sí misma | Clonada dentro del proyecto | `CARPETA_HERRAMIENTA` autoexclusión |
+
+### Estado al final de la sesión
+
+- ✅ Herramienta funcional y probada con Sistema_Inventario real
+- ✅ PDF generado correctamente con hallazgos reales
+- ✅ Publicada en GitHub: https://github.com/EloyKarinR/Herramienta-DetecVulnerabilidades
+- ⏳ Priorizar archivos sensibles (login, db, config, auth)
+- ⏳ README.md para GitHub
+- ⏳ Casos de estudio para Capítulo IV
+
+
+
 Registro de decisiones tomadas y por qué. Material útil para la monografía.
 
 ---

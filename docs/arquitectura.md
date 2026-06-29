@@ -75,6 +75,14 @@ python auditoria.py --proyecto ./mi-sistema
 
 ---
 
+## Autoexclusión de la herramienta
+
+```python
+CARPETA_HERRAMIENTA = os.path.dirname(os.path.abspath(__file__))
+```
+
+Cuando el estudiante clona la herramienta dentro de su proyecto y ejecuta `python auditoria.py --proyecto ..`, la herramienta detecta automáticamente su propia carpeta y la excluye del escaneo. Así nunca se audita a sí misma.
+
 ## Archivos del proyecto
 
 ```
@@ -82,6 +90,8 @@ auditor-ia/
   auditoria.py      ← programa principal (orquestador)
   ejemplo_vulne.py  ← archivo de prueba con vulnerabilidades
   requirements.txt  ← dependencias (bandit, semgrep, fpdf2)
+  .gitignore        ← excluye venv, __pycache__, PDFs generados
+  CLAUDE.md         ← contexto del proyecto para Claude Code
   docs/             ← esta carpeta (documentación en Obsidian)
   README.md         ← instrucciones para GitHub (pendiente)
 ```
