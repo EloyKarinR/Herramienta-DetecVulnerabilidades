@@ -1,0 +1,3 @@
+bandit
+semgrep
+fpdf2

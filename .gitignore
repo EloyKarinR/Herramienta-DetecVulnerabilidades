@@ -1,0 +1,23 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Reportes generados
+*.pdf
+
+# VS Code
+.vscode/
+
+# Obsidian
+docs/.obsidian/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
