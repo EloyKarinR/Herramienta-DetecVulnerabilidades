@@ -4,6 +4,8 @@ import os
 import re
 import subprocess
 import sys
+from datetime import date
+from fpdf import FPDF
 
 EXTENSIONES_CODIGO = (".py", ".php", ".js", ".java", ".ts", ".c", ".cpp", ".h")
 CARPETAS_IGNORADAS = {"node_modules", "vendor", "venv", ".venv", ".git", "__pycache__"}
@@ -142,6 +144,19 @@ def detectar_por_regex(ruta_archivo, regla):
     return hallazgos
 
 
+COLORES_SEVERIDAD = {
+    "Alta":       (220, 53,  69),
+    "Media-Alta": (253, 126, 20),
+    "Media":      (255, 193,  7),
+    "Baja":       (40,  167, 69),
+}
+
+MESES = {
+    1: "enero", 2: "febrero", 3: "marzo",    4: "abril",
+    5: "mayo",  6: "junio",   7: "julio",    8: "agosto",
+    9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
+}
+
 SEVERIDAD_BANDIT = {
     "HIGH":   "Alta",
     "MEDIUM": "Media",
@@ -225,6 +240,147 @@ def detectar_con_semgrep(ruta):
     return hallazgos
 
 
+def generar_reporte_pdf(hallazgos, ruta_proyecto):
+    hoy = date.today()
+    fecha_str = f"{hoy.day} de {MESES[hoy.month]} de {hoy.year}"
+
+    conteo = {"Alta": 0, "Media-Alta": 0, "Media": 0, "Baja": 0}
+    for h in hallazgos:
+        sev = h.get("severidad", "Baja")
+        conteo[sev] = conteo.get(sev, 0) + 1
+    total = len(hallazgos)
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # ── PORTADA ──────────────────────────────────────────────
+    pdf.add_page()
+    pdf.ln(25)
+    pdf.set_font("Helvetica", "B", 22)
+    pdf.set_text_color(30, 30, 30)
+    pdf.multi_cell(0, 12, "REPORTE DE AUDITORÍA DE SEGURIDAD", align="C")
+    pdf.ln(2)
+    pdf.set_font("Helvetica", "", 13)
+    pdf.set_text_color(100, 100, 100)
+    pdf.multi_cell(0, 8, "Herramienta Auditor-IA v0.1", align="C")
+    pdf.ln(12)
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(60, 60, 60)
+    pdf.multi_cell(0, 7, f"Proyecto auditado: {ruta_proyecto}", align="C")
+    pdf.multi_cell(0, 7, f"Fecha: {fecha_str}", align="C")
+    pdf.ln(12)
+    r, g, b = (220, 53, 69) if total > 0 else (40, 167, 69)
+    pdf.set_font("Helvetica", "B", 52)
+    pdf.set_text_color(r, g, b)
+    pdf.multi_cell(0, 22, str(total), align="C")
+    pdf.set_font("Helvetica", "", 14)
+    pdf.set_text_color(80, 80, 80)
+    pdf.multi_cell(0, 8, "vulnerabilidades detectadas", align="C")
+
+    # ── RESUMEN EJECUTIVO ─────────────────────────────────────
+    pdf.add_page()
+    pdf.set_font("Helvetica", "B", 13)
+    pdf.set_fill_color(30, 30, 30)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(0, 9, "  RESUMEN EJECUTIVO", fill=True, new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(5)
+
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(50, 50, 50)
+    pdf.multi_cell(0, 7,
+        "Este reporte presenta los resultados del análisis de seguridad automatizado "
+        "realizado sobre el proyecto indicado. Las vulnerabilidades fueron detectadas "
+        "mediante tres motores: análisis por expresiones regulares (Regex), Bandit para "
+        "Python y Semgrep para múltiples lenguajes. Se recomienda corregir las "
+        "vulnerabilidades de severidad Alta antes de llevar el sistema a producción."
+    )
+    pdf.ln(8)
+
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.set_fill_color(230, 230, 230)
+    pdf.set_text_color(30, 30, 30)
+    pdf.cell(120, 8, "  Severidad", border=1, fill=True)
+    pdf.cell(50,  8, "Total", border=1, fill=True, align="C")
+    pdf.ln()
+
+    for severidad, cantidad in conteo.items():
+        r, g, b = COLORES_SEVERIDAD.get(severidad, (150, 150, 150))
+        pdf.set_fill_color(r, g, b)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(120, 8, f"  {severidad}", border=1, fill=True)
+        pdf.cell(50,  8, str(cantidad), border=1, fill=True, align="C")
+        pdf.ln()
+
+    pdf.set_fill_color(30, 30, 30)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(120, 8, "  TOTAL", border=1, fill=True)
+    pdf.cell(50,  8, str(total), border=1, fill=True, align="C")
+    pdf.ln(12)
+
+    if total == 0:
+        pdf.set_font("Helvetica", "", 11)
+        pdf.set_text_color(40, 167, 69)
+        pdf.multi_cell(0, 7, "No se encontraron vulnerabilidades en el proyecto analizado.")
+
+    # ── HALLAZGOS DETALLADOS ──────────────────────────────────
+    if hallazgos:
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.set_fill_color(30, 30, 30)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(0, 9, "  HALLAZGOS DETALLADOS", fill=True, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(5)
+
+        for h in hallazgos:
+            if pdf.get_y() > 240:
+                pdf.add_page()
+
+            r, g, b = COLORES_SEVERIDAD.get(h["severidad"], (150, 150, 150))
+
+            pdf.set_fill_color(r, g, b)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font("Helvetica", "B", 10)
+            etiqueta = f"  [{h['severidad']}]  {h['regla']} — {h['nombre']}"
+            pdf.multi_cell(0, 8, etiqueta, fill=True)
+
+            pdf.set_fill_color(248, 248, 248)
+            pdf.set_text_color(50, 50, 50)
+            pdf.set_font("Helvetica", "", 9)
+
+            owasp = h.get("owasp", "")
+            cwe   = h.get("cwe", "")
+            cvss  = h.get("cvss", "")
+            if owasp or cwe or cvss:
+                pdf.multi_cell(0, 6,
+                    f"  OWASP: {owasp}   |   CWE: {cwe}   |   CVSS: {cvss}",
+                    fill=True)
+
+            motor   = h.get("motor", "Regex")
+            archivo = h["archivo"]
+            linea   = h["linea"]
+            pdf.multi_cell(0, 6,
+                f"  Motor: {motor}   |   Archivo: {archivo} (línea {linea})",
+                fill=True)
+
+            pdf.set_font("Courier", "", 8)
+            pdf.set_fill_color(235, 235, 235)
+            pdf.multi_cell(0, 6, f"  {h['codigo']}", fill=True)
+
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_fill_color(232, 245, 233)
+            pdf.set_text_color(27, 94, 32)
+            pdf.multi_cell(0, 6, f"  Corrección: {h['correccion']}", fill=True)
+
+            pdf.set_text_color(0, 0, 0)
+            pdf.ln(4)
+
+    nombre_pdf = f"reporte_auditoria_{hoy.strftime('%Y-%m-%d')}.pdf"
+    ruta_pdf   = os.path.join(ruta_proyecto, nombre_pdf)
+    pdf.output(ruta_pdf)
+    return ruta_pdf
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Herramienta de auditoría de seguridad para código generado por IA"
@@ -276,6 +432,10 @@ def main():
             print(f"  Corrección: {h['correccion']}\n")
     else:
         print("No se encontraron vulnerabilidades con las reglas actuales.")
+
+    print("\nGenerando reporte PDF...")
+    ruta_pdf = generar_reporte_pdf(todos_los_hallazgos, ruta)
+    print(f"Reporte guardado en: {ruta_pdf}")
 
 
 if __name__ == "__main__":
