@@ -8,6 +8,7 @@ from datetime import date
 import importlib.util
 
 
+
 def verificar_dependencias():
     paquetes = {
         "fpdf":    "fpdf2",
@@ -278,27 +279,32 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
 
     # ── PORTADA ──────────────────────────────────────────────
     pdf.add_page()
+    w = pdf.epw
     pdf.ln(25)
     pdf.set_font("Helvetica", "B", 22)
     pdf.set_text_color(30, 30, 30)
-    pdf.multi_cell(0, 12, "REPORTE DE AUDITORÍA DE SEGURIDAD", align="C")
+    pdf.cell(w, 12, "REPORTE DE AUDITORIA DE SEGURIDAD", align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(2)
     pdf.set_font("Helvetica", "", 13)
     pdf.set_text_color(100, 100, 100)
-    pdf.multi_cell(0, 8, "Herramienta Auditor-IA v0.1", align="C")
+    pdf.cell(w, 8, "Herramienta Auditor-IA v0.1", align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(12)
     pdf.set_font("Helvetica", "", 11)
     pdf.set_text_color(60, 60, 60)
-    pdf.multi_cell(0, 7, f"Proyecto auditado: {ruta_proyecto}", align="C")
-    pdf.multi_cell(0, 7, f"Fecha: {fecha_str}", align="C")
+    ruta_mostrar = os.path.abspath(ruta_proyecto)
+    pdf.cell(w, 7, "Proyecto auditado:", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.multi_cell(w, 7, ruta_mostrar, align="C")
+    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(w, 7, f"Fecha: {fecha_str}", align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(12)
     r, g, b = (220, 53, 69) if total > 0 else (40, 167, 69)
     pdf.set_font("Helvetica", "B", 52)
     pdf.set_text_color(r, g, b)
-    pdf.multi_cell(0, 22, str(total), align="C")
+    pdf.cell(w, 22, str(total), align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 14)
     pdf.set_text_color(80, 80, 80)
-    pdf.multi_cell(0, 8, "vulnerabilidades detectadas", align="C")
+    pdf.cell(w, 8, "vulnerabilidades detectadas", align="C", new_x="LMARGIN", new_y="NEXT")
 
     # ── RESUMEN EJECUTIVO ─────────────────────────────────────
     pdf.add_page()
@@ -310,12 +316,12 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
 
     pdf.set_font("Helvetica", "", 11)
     pdf.set_text_color(50, 50, 50)
-    pdf.multi_cell(0, 7,
-        "Este reporte presenta los resultados del análisis de seguridad automatizado "
+    pdf.multi_cell(w, 7,
+        "Este reporte presenta los resultados del analisis de seguridad automatizado "
         "realizado sobre el proyecto indicado. Las vulnerabilidades fueron detectadas "
-        "mediante tres motores: análisis por expresiones regulares (Regex), Bandit para "
-        "Python y Semgrep para múltiples lenguajes. Se recomienda corregir las "
-        "vulnerabilidades de severidad Alta antes de llevar el sistema a producción."
+        "mediante tres motores: Regex, Bandit para Python y Semgrep para multiples "
+        "lenguajes. Se recomienda corregir las vulnerabilidades de severidad Alta "
+        "antes de llevar el sistema a produccion."
     )
     pdf.ln(8)
 
@@ -344,7 +350,7 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
     if total == 0:
         pdf.set_font("Helvetica", "", 11)
         pdf.set_text_color(40, 167, 69)
-        pdf.multi_cell(0, 7, "No se encontraron vulnerabilidades en el proyecto analizado.")
+        pdf.multi_cell(w, 7, "No se encontraron vulnerabilidades en el proyecto analizado.")
 
     # ── HALLAZGOS DETALLADOS ──────────────────────────────────
     if hallazgos:
@@ -352,7 +358,7 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
         pdf.set_font("Helvetica", "B", 13)
         pdf.set_fill_color(30, 30, 30)
         pdf.set_text_color(255, 255, 255)
-        pdf.cell(0, 9, "  HALLAZGOS DETALLADOS", fill=True, new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(w, 9, "  HALLAZGOS DETALLADOS", fill=True, new_x="LMARGIN", new_y="NEXT")
         pdf.ln(5)
 
         for h in hallazgos:
@@ -364,8 +370,8 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
             pdf.set_fill_color(r, g, b)
             pdf.set_text_color(255, 255, 255)
             pdf.set_font("Helvetica", "B", 10)
-            etiqueta = f"  [{h['severidad']}]  {h['regla']} — {h['nombre']}"
-            pdf.multi_cell(0, 8, etiqueta, fill=True)
+            etiqueta = f"  [{h['severidad']}]  {h['regla']} - {h['nombre']}"
+            pdf.multi_cell(w, 8, etiqueta, fill=True)
 
             pdf.set_fill_color(248, 248, 248)
             pdf.set_text_color(50, 50, 50)
@@ -375,25 +381,27 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
             cwe   = h.get("cwe", "")
             cvss  = h.get("cvss", "")
             if owasp or cwe or cvss:
-                pdf.multi_cell(0, 6,
+                pdf.multi_cell(w, 6,
                     f"  OWASP: {owasp}   |   CWE: {cwe}   |   CVSS: {cvss}",
                     fill=True)
 
             motor   = h.get("motor", "Regex")
-            archivo = h["archivo"]
+            archivo = os.path.basename(h["archivo"])
             linea   = h["linea"]
-            pdf.multi_cell(0, 6,
-                f"  Motor: {motor}   |   Archivo: {archivo} (línea {linea})",
+            pdf.multi_cell(w, 6,
+                f"  Motor: {motor}   |   Archivo: {archivo} (linea {linea})",
                 fill=True)
 
+            codigo = h["codigo"][:120] + "..." if len(h["codigo"]) > 120 else h["codigo"]
             pdf.set_font("Courier", "", 8)
             pdf.set_fill_color(235, 235, 235)
-            pdf.multi_cell(0, 6, f"  {h['codigo']}", fill=True)
+            pdf.multi_cell(w, 6, f"  {codigo}", fill=True)
 
+            correccion = h.get("correccion", "")
             pdf.set_font("Helvetica", "", 9)
             pdf.set_fill_color(232, 245, 233)
             pdf.set_text_color(27, 94, 32)
-            pdf.multi_cell(0, 6, f"  Corrección: {h['correccion']}", fill=True)
+            pdf.multi_cell(w, 6, f"  Correccion: {correccion}", fill=True)
 
             pdf.set_text_color(0, 0, 0)
             pdf.ln(4)
