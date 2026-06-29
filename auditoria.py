@@ -375,7 +375,7 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
             pdf.set_text_color(255, 255, 255)
             pdf.set_font("Helvetica", "B", 10)
             etiqueta = limpiar_pdf(f"  [{h['severidad']}]  {h['regla']} - {h['nombre']}")
-            pdf.multi_cell(w, 8, etiqueta, fill=True)
+            pdf.multi_cell(w, 8, etiqueta, fill=True, new_x="LMARGIN", new_y="NEXT")
 
             pdf.set_fill_color(248, 248, 248)
             pdf.set_text_color(50, 50, 50)
@@ -387,26 +387,26 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
             if owasp or cwe or cvss:
                 pdf.multi_cell(w, 6,
                     f"  OWASP: {owasp}   |   CWE: {cwe}   |   CVSS: {cvss}",
-                    fill=True)
+                    fill=True, new_x="LMARGIN", new_y="NEXT")
 
             motor   = limpiar_pdf(h.get("motor", "Regex"))
             archivo = limpiar_pdf(os.path.basename(h["archivo"]))
             linea   = h["linea"]
             pdf.multi_cell(w, 6,
                 f"  Motor: {motor}   |   Archivo: {archivo} (linea {linea})",
-                fill=True)
+                fill=True, new_x="LMARGIN", new_y="NEXT")
 
             codigo = limpiar_pdf(h["codigo"])
             codigo = codigo[:120] + "..." if len(codigo) > 120 else codigo
             pdf.set_font("Courier", "", 8)
             pdf.set_fill_color(235, 235, 235)
-            pdf.multi_cell(w, 6, f"  {codigo}", fill=True)
+            pdf.multi_cell(w, 6, f"  {codigo}", fill=True, new_x="LMARGIN", new_y="NEXT")
 
             correccion = limpiar_pdf(h.get("correccion", ""))
             pdf.set_font("Helvetica", "", 9)
             pdf.set_fill_color(232, 245, 233)
             pdf.set_text_color(27, 94, 32)
-            pdf.multi_cell(w, 6, f"  Correccion: {correccion}", fill=True)
+            pdf.multi_cell(w, 6, f"  Correccion: {correccion}", fill=True, new_x="LMARGIN", new_y="NEXT")
 
             pdf.set_text_color(0, 0, 0)
             pdf.ln(4)
