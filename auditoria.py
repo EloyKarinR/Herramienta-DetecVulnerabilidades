@@ -37,6 +37,15 @@ EXTENSIONES_CODIGO = (".py", ".php", ".js", ".java", ".ts", ".c", ".cpp", ".h")
 CARPETAS_IGNORADAS = {"node_modules", "vendor", "venv", ".venv", ".git", "__pycache__"}
 CARPETA_HERRAMIENTA = os.path.dirname(os.path.abspath(__file__))
 
+# Palabras clave en nombres de archivo que sugieren funciones críticas del
+# sistema (autenticación, base de datos, configuración, administración). Los
+# hallazgos en estos archivos se priorizan en el reporte.
+ARCHIVOS_SENSIBLES = {
+    "login", "auth", "session", "password", "credencial", "secret",
+    "db", "database", "conexion", "config", "settings",
+    "admin", "usuario", "user",
+}
+
 REGLAS = [
     {
         "id": "SEC-01",
@@ -134,6 +143,15 @@ REGLAS = [
 def es_comentario(linea):
     limpia = linea.strip()
     return limpia.startswith(("#", "//", "*", "/*", "<!--"))
+
+
+def es_archivo_sensible(ruta_archivo):
+    """Indica si el nombre del archivo sugiere que maneja funciones críticas
+    (login, base de datos, configuración, admin...). Un fallo en estos archivos
+    suele tener mayor impacto, por eso se priorizan en el reporte.
+    """
+    nombre = os.path.basename(ruta_archivo).lower()
+    return any(clave in nombre for clave in ARCHIVOS_SENSIBLES)
 
 
 def buscar_archivos_codigo(ruta):
@@ -597,7 +615,8 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
             pdf.set_fill_color(r, g, b)
             pdf.set_text_color(255, 255, 255)
             pdf.set_font("Helvetica", "B", 10)
-            etiqueta = limpiar_pdf(f"  [{h['severidad']}]  {h['regla']} - {h['nombre']}")
+            marca = "[ARCHIVO SENSIBLE]  " if h.get("sensible") else ""
+            etiqueta = limpiar_pdf(f"  [{h['severidad']}]  {marca}{h['regla']} - {h['nombre']}")
             pdf.multi_cell(w, 8, etiqueta, fill=True, new_x="LMARGIN", new_y="NEXT")
 
             pdf.set_fill_color(248, 248, 248)
@@ -687,10 +706,21 @@ def main():
         for regla in REGLAS:
             todos_los_hallazgos.extend(detectar_por_regex(archivo, regla))
 
+    # Marcar hallazgos de archivos sensibles (login, db, config, admin...)
+    for h in todos_los_hallazgos:
+        h["sensible"] = es_archivo_sensible(h["archivo"])
+
+    # Ordenar: primero los archivos sensibles, luego por severidad
+    ORDEN_SEVERIDAD = {"Alta": 0, "Media-Alta": 1, "Media": 2, "Baja": 3}
+    todos_los_hallazgos.sort(
+        key=lambda h: (not h["sensible"], ORDEN_SEVERIDAD.get(h["severidad"], 9))
+    )
+
     if todos_los_hallazgos:
         print(f"Se encontraron {len(todos_los_hallazgos)} posibles vulnerabilidades:\n")
         for h in todos_los_hallazgos:
-            print(f"[{h['severidad']}] {h['regla']} - {h['nombre']}")
+            marca = "[ARCHIVO SENSIBLE] " if h.get("sensible") else ""
+            print(f"[{h['severidad']}] {marca}{h['regla']} - {h['nombre']}")
             print(f"  OWASP: {h['owasp']}  |  {h['cwe']}  |  CVSS: {h['cvss']}")
             print(f"  Archivo: {h['archivo']} (línea {h['linea']})")
             print(f"  Código:  {h['codigo']}")
