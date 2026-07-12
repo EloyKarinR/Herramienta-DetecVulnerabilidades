@@ -11,9 +11,10 @@ import importlib.util
 
 def verificar_dependencias():
     paquetes = {
-        "fpdf":    "fpdf2",
-        "bandit":  "bandit",
-        "semgrep": "semgrep",
+        "fpdf":     "fpdf2",
+        "bandit":   "bandit",
+        "semgrep":  "semgrep",
+        "requests": "requests",
     }
     faltantes = [
         pip_name
@@ -30,6 +31,7 @@ def verificar_dependencias():
 
 verificar_dependencias()
 from fpdf import FPDF
+import requests
 
 EXTENSIONES_CODIGO = (".py", ".php", ".js", ".java", ".ts", ".c", ".cpp", ".h")
 CARPETAS_IGNORADAS = {"node_modules", "vendor", "venv", ".venv", ".git", "__pycache__"}
@@ -272,8 +274,192 @@ def detectar_con_semgrep(ruta):
     return hallazgos
 
 
+def leer_dependencias(ruta_proyecto):
+    """Lee requirements.txt del proyecto y extrae nombre + versión de cada librería.
+
+    Devuelve una lista de diccionarios como:
+        [{"nombre": "Django", "version": "2.0.0", "ecosistema": "PyPI"}, ...]
+
+    Esto es el primer paso del análisis SCA (Software Composition Analysis):
+    saber QUÉ librerías usa el proyecto antes de preguntarle a la API OSV
+    si esas versiones tienen vulnerabilidades conocidas.
+    """
+    dependencias = []
+    ruta_req = os.path.join(ruta_proyecto, "requirements.txt")
+
+    # Si el proyecto no tiene requirements.txt, no hay nada que analizar
+    if not os.path.isfile(ruta_req):
+        return dependencias
+
+    with open(ruta_req, "r", encoding="utf-8", errors="ignore") as f:
+        for linea in f:
+            linea = linea.strip()
+
+            # Saltar líneas vacías y comentarios
+            if not linea or linea.startswith("#"):
+                continue
+
+            # En requirements.txt la versión se separa con operadores como
+            # ==, >=, <=, ~=, !=, >, <   (ej: "Django==2.0.0", "flask>=1.0")
+            # re.split parte la línea en esos operadores y nos deja
+            # el nombre en la primera posición y la versión en la segunda.
+            partes = re.split(r"[=<>!~]+", linea)
+            nombre = partes[0].strip()
+            version = partes[1].strip() if len(partes) > 1 else ""
+
+            if nombre:
+                dependencias.append({
+                    "nombre": nombre,
+                    "version": version,
+                    "ecosistema": "PyPI",
+                })
+
+    return dependencias
+
+
+# Dirección de la API OSV de Google (Open Source Vulnerabilities).
+# Es gratuita y no requiere registro ni API key.
+OSV_URL = "https://api.osv.dev/v1/query"
+
+
+def consultar_osv(dependencia):
+    """Le pregunta a la API OSV si una librería (nombre + versión) tiene
+    vulnerabilidades conocidas.
+
+    Devuelve la lista de vulnerabilidades que reporta OSV. Si la librería
+    está limpia o no se pudo consultar, devuelve una lista vacía.
+    """
+    # Sin versión exacta no podemos consultar con precisión: la saltamos.
+    if not dependencia["version"]:
+        return []
+
+    # Este es el "formulario" que espera OSV: qué librería y qué versión.
+    consulta = {
+        "package": {
+            "name": dependencia["nombre"],
+            "ecosystem": dependencia["ecosistema"],
+        },
+        "version": dependencia["version"],
+    }
+
+    try:
+        # POST envía nuestra consulta; timeout evita que se quede colgado.
+        respuesta = requests.post(OSV_URL, json=consulta, timeout=15)
+        datos = respuesta.json()
+        # OSV responde {"vulns": [...]} si hay fallas, o {} si está limpia.
+        return datos.get("vulns", [])
+    except Exception as e:
+        print(f"  (No se pudo consultar OSV para {dependencia['nombre']}: {e})")
+        return []
+
+
+def detectar_dependencias_vulnerables(ruta_proyecto):
+    """Análisis SCA completo: lee las dependencias del proyecto, consulta cada
+    una en OSV y convierte las vulnerabilidades encontradas al formato de
+    hallazgo que usa el resto de la herramienta (para que salgan en el PDF).
+    """
+    hallazgos = []
+    dependencias = leer_dependencias(ruta_proyecto)
+
+    if not dependencias:
+        return hallazgos
+
+    print(f"  Analizando {len(dependencias)} dependencias en OSV...")
+
+    for dep in dependencias:
+        vulns = consultar_osv(dep)
+
+        # Si la librería está limpia, no generamos hallazgo.
+        if not vulns:
+            continue
+
+        # Recolectamos el identificador de cada vulnerabilidad. Preferimos el
+        # CVE (nombre oficial); si no hay, usamos el id de OSV (GHSA-...).
+        identificadores = []
+        for v in vulns:
+            aliases = v.get("aliases", [])
+            cve = next((a for a in aliases if a.startswith("CVE")), v.get("id", "SIN-ID"))
+            identificadores.append(cve)
+
+        n = len(vulns)
+
+        # Mostramos los primeros 6 CVE y, si hay más, un "(+N más)".
+        muestra = ", ".join(identificadores[:6])
+        if n > 6:
+            muestra += f"  (+{n - 6} más)"
+
+        # La severidad depende de cuántas fallas acumula la librería:
+        # muchas vulnerabilidades = riesgo mayor.
+        severidad = "Alta" if n > 10 else "Media-Alta"
+
+        # UN solo hallazgo por librería, con el conteo total de fallas.
+        hallazgos.append({
+            "archivo": os.path.join(ruta_proyecto, "requirements.txt"),
+            "linea": "-",
+            "codigo": muestra,
+            "regla": "A06 - Dependencia vulnerable",
+            "nombre": f"{dep['nombre']} {dep['version']} tiene {n} vulnerabilidad(es) conocida(s)",
+            "severidad": severidad,
+            "owasp": "A06:2021",
+            "cwe": "CWE-1035",
+            "cvss": "N/D",
+            "correccion": (
+                f"Actualizar {dep['nombre']} a una versión más reciente "
+                f"que corrija estas vulnerabilidades."
+            ),
+            "motor": "OSV (dependencias)",
+        })
+
+    return hallazgos
+
+
 def limpiar_pdf(texto):
     return "".join(c if ord(c) < 256 else "?" for c in str(texto))
+
+
+# Peso de cada severidad para el puntaje de riesgo. Inspirado en la escala
+# CVSS (0-10): las fallas graves pesan mucho más que las leves.
+PESOS_SEVERIDAD = {
+    "Alta":       10,
+    "Media-Alta":  5,
+    "Media":       2,
+    "Baja":        1,
+}
+
+
+def calcular_riesgo(hallazgos):
+    """Calcula el nivel de riesgo global del proyecto a partir de los hallazgos.
+
+    Suma el peso de cada hallazgo según su severidad, acota el total a 100 y
+    lo traduce a un nivel (Bajo, Medio, Alto, Crítico). Devuelve un diccionario
+    con el puntaje, el nivel y el conteo por severidad.
+    """
+    conteo = {"Alta": 0, "Media-Alta": 0, "Media": 0, "Baja": 0}
+    for h in hallazgos:
+        sev = h.get("severidad", "Baja")
+        conteo[sev] = conteo.get(sev, 0) + 1
+
+    # Suma ponderada y techo de 100.
+    puntaje = sum(PESOS_SEVERIDAD.get(sev, 1) * cant for sev, cant in conteo.items())
+    puntaje = min(100, puntaje)
+
+    if puntaje == 0:
+        nivel = "Sin riesgo detectado"
+    elif puntaje <= 25:
+        nivel = "Bajo"
+    elif puntaje <= 50:
+        nivel = "Medio"
+    elif puntaje <= 75:
+        nivel = "Alto"
+    else:
+        nivel = "Critico"
+
+    return {
+        "puntaje": puntaje,
+        "nivel": nivel,
+        "conteo": conteo,
+        "total": len(hallazgos),
+    }
 
 
 def generar_reporte_pdf(hallazgos, ruta_proyecto):
@@ -285,6 +471,16 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
         sev = h.get("severidad", "Baja")
         conteo[sev] = conteo.get(sev, 0) + 1
     total = len(hallazgos)
+
+    # Nivel de riesgo global y color según el nivel
+    riesgo = calcular_riesgo(hallazgos)
+    COLOR_NIVEL = {
+        "Sin riesgo detectado": (40, 167, 69),
+        "Bajo":    (40, 167, 69),
+        "Medio":   (255, 193, 7),
+        "Alto":    (253, 126, 20),
+        "Critico": (220, 53, 69),
+    }
 
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -318,6 +514,15 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
     pdf.set_text_color(80, 80, 80)
     pdf.cell(w, 8, "vulnerabilidades detectadas", align="C", new_x="LMARGIN", new_y="NEXT")
 
+    # Recuadro con el nivel de riesgo global, coloreado según el nivel
+    pdf.ln(14)
+    rn, gn, bn = COLOR_NIVEL.get(riesgo["nivel"], (150, 150, 150))
+    pdf.set_fill_color(rn, gn, bn)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 16)
+    texto_riesgo = limpiar_pdf(f"NIVEL DE RIESGO: {riesgo['nivel'].upper()}  ({riesgo['puntaje']}/100)")
+    pdf.cell(w, 14, texto_riesgo, align="C", fill=True, new_x="LMARGIN", new_y="NEXT")
+
     # ── RESUMEN EJECUTIVO ─────────────────────────────────────
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 13)
@@ -331,10 +536,20 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
     pdf.multi_cell(w, 7,
         "Este reporte presenta los resultados del analisis de seguridad automatizado "
         "realizado sobre el proyecto indicado. Las vulnerabilidades fueron detectadas "
-        "mediante tres motores: Regex, Bandit para Python y Semgrep para multiples "
-        "lenguajes. Se recomienda corregir las vulnerabilidades de severidad Alta "
-        "antes de llevar el sistema a produccion."
+        "mediante cuatro motores: Regex, Bandit para Python, Semgrep para multiples "
+        "lenguajes y OSV para dependencias vulnerables. Se recomienda corregir las "
+        "vulnerabilidades de severidad Alta antes de llevar el sistema a produccion."
     )
+    pdf.ln(6)
+
+    # Frase de nivel de riesgo dentro del resumen
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_text_color(rn, gn, bn)
+    pdf.multi_cell(w, 7,
+        limpiar_pdf(f"Nivel de riesgo del proyecto: {riesgo['nivel'].upper()} "
+                    f"({riesgo['puntaje']}/100), calculado sobre {riesgo['total']} hallazgos.")
+    )
+    pdf.set_text_color(50, 50, 50)
     pdf.ln(8)
 
     pdf.set_font("Helvetica", "B", 10)
@@ -445,10 +660,12 @@ def main():
 
     hay_python = any(a.endswith(".py") for a in archivos)
     hay_otros  = any(a.endswith((".php", ".js", ".java", ".ts", ".c", ".cpp", ".h")) for a in archivos)
+    hay_deps   = os.path.isfile(os.path.join(ruta, "requirements.txt"))
 
     print("Motores activos:")
     print(f"  {'✓' if hay_python else '✗'} Bandit   (Python / Django / Flask)")
     print(f"  {'✓' if hay_otros  else '✗'} Semgrep  (PHP, JavaScript, Java, TypeScript, C/C++)")
+    print(f"  {'✓' if hay_deps   else '✗'} OSV      (dependencias vulnerables - requirements.txt)")
     print(f"  ✓ Regex    (todos los lenguajes)\n")
 
     todos_los_hallazgos = []
@@ -460,6 +677,10 @@ def main():
     if hay_otros:
         print("Ejecutando Semgrep...")
         todos_los_hallazgos.extend(detectar_con_semgrep(ruta))
+
+    if hay_deps:
+        print("Ejecutando análisis de dependencias (OSV)...")
+        todos_los_hallazgos.extend(detectar_dependencias_vulnerables(ruta))
 
     print("Ejecutando análisis por Regex...")
     for archivo in archivos:
@@ -476,6 +697,15 @@ def main():
             print(f"  Corrección: {h['correccion']}\n")
     else:
         print("No se encontraron vulnerabilidades con las reglas actuales.")
+
+    # Nivel de riesgo global del proyecto
+    riesgo = calcular_riesgo(todos_los_hallazgos)
+    c = riesgo["conteo"]
+    print("\n" + "=" * 60)
+    print(f"  NIVEL DE RIESGO DEL PROYECTO: {riesgo['nivel'].upper()}  ({riesgo['puntaje']}/100)")
+    print(f"  {riesgo['total']} hallazgos  ->  Altas: {c['Alta']}  |  "
+          f"Media-Altas: {c['Media-Alta']}  |  Medias: {c['Media']}  |  Bajas: {c['Baja']}")
+    print("=" * 60)
 
     print("\nGenerando reporte PDF...")
     ruta_pdf = generar_reporte_pdf(todos_los_hallazgos, ruta)
