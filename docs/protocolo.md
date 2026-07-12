@@ -194,6 +194,36 @@ hash = hashlib.md5(password.encode()).hexdigest()
 
 ---
 
+## A06 — Dependencias vulnerables (motor OSV / SCA)
+
+| Campo | Valor |
+|---|---|
+| OWASP | A06:2021 |
+| CWE | CWE-1035 |
+| Severidad | Alta si la librería tiene >10 CVE, Media-Alta si tiene 1-10 |
+| Motor | OSV (Google) |
+
+**¿Qué detecta?** Librerías declaradas en `requirements.txt` cuya versión tiene
+vulnerabilidades conocidas (CVE) según la base de datos OSV.
+
+**Ejemplo vulnerable:**
+```
+Django==2.0.0   # 25 CVE conocidos
+```
+
+**Corrección:** Actualizar la librería a una versión sin esas vulnerabilidades.
+
+---
+
+## Nota: campo "impacto" (reporte que educa)
+
+Además de los 5 campos originales del protocolo, cada regla ahora tiene un sexto
+campo: **impacto** — una explicación en lenguaje claro del daño real que causaría la
+vulnerabilidad. Su objetivo es concientizar al estudiante, no solo señalar la falla.
+Los hallazgos de Bandit/Semgrep/OSV usan un impacto genérico según su severidad.
+
+---
+
 ## Vínculos
 
 - [[proyecto]] — Visión general

@@ -48,13 +48,15 @@ El aporte original está en **el protocolo**, no en el motor de detección en br
 
 ## Motores de detección
 
-| Motor | Lenguajes | Instalación |
+| Motor | Qué analiza | Lenguajes |
 |---|---|---|
-| Bandit | Python, Django, Flask | `pip install bandit` |
-| Semgrep | PHP, JavaScript, Java, TypeScript | `pip install semgrep` |
-| Regex propio | Todos (complemento) | Incluido |
+| Regex propio | Código (patrones de texto) | Todos (complemento) |
+| Bandit | Código con AST | Python, Django, Flask |
+| Semgrep | Código con reglas OWASP | PHP, JS, Java, TS, C/C++ |
+| OSV (SCA) | Dependencias vulnerables (CVE) | requirements.txt (PyPI) |
 
-Los tres se instalan automáticamente con `pip install -r requirements.txt`.
+Se instalan automáticamente con `pip install -r requirements.txt` (o en la primera
+ejecución). Cada motor se activa solo si el proyecto tiene lo que le corresponde.
 
 ---
 
@@ -62,17 +64,21 @@ Los tres se instalan automáticamente con `pip install -r requirements.txt`.
 
 - [x] CLI básico con argparse
 - [x] Descubrimiento de archivos por extensión
-- [x] 9 reglas de detección por regex (SEC-01 a SEC-09) con OWASP/CWE/CVSS
+- [x] 9 reglas de detección por regex (SEC-01 a SEC-09) con OWASP/CWE/CVSS/impacto
 - [x] Filtro de carpetas ignoradas (node_modules, venv, etc.)
 - [x] Filtro de comentarios (es_comentario)
 - [x] Integración de Bandit (Python/Django/Flask)
 - [x] Integración de Semgrep (PHP, JS, Java, TS, C/C++)
-- [x] Activación inteligente de motores según lenguajes del proyecto
-- [x] Autoinstalación de dependencias (fpdf2, bandit, semgrep)
-- [x] Reporte en PDF en español (portada, resumen ejecutivo, hallazgos)
+- [x] Motor OSV: análisis SCA de dependencias vulnerables (OWASP A06)
+- [x] Puntuación de riesgo del proyecto (0-100 + nivel Bajo/Medio/Alto/Crítico)
+- [x] Priorización de archivos sensibles (login, db, config, auth)
+- [x] Reporte que educa: campo "impacto" en cada hallazgo
+- [x] Activación inteligente de motores según lo que tenga el proyecto
+- [x] Autoinstalación de dependencias (fpdf2, bandit, semgrep, requests)
+- [x] Reporte en PDF en español (portada con riesgo, resumen ejecutivo, hallazgos)
 - [x] La herramienta se excluye a sí misma del análisis automáticamente
 - [x] Publicado en GitHub
-- [ ] Priorizar archivos sensibles (login, db, config, auth)
+- [ ] AST para Python (reducir falsos positivos en reglas propias) — PRÓXIMO
 - [ ] README para GitHub
 - [ ] Casos de estudio (Capítulo IV)
 

@@ -2,6 +2,59 @@
 
 ---
 
+## 2026-07-12 — Sesión "hacer la herramienta significativa"
+
+Eloy planteó una inquietud de fondo: la herramienta se sentía "básica" frente a las
+amenazas actuales y quería que fuera un aporte real, no solo una nota. Se acordó un
+reencuadre importante y cuatro mejoras.
+
+### Reencuadre metodológico (importante para la defensa)
+
+La herramienta NO compite con Semgrep/Bandit en potencia de detección — no es su
+aporte. Su aporte es el **ángulo**: auditar específicamente código generado por IA,
+operacionalizando el hallazgo de Pearce et al. (2022) de que ~40% del código de
+Copilot es vulnerable. El aporte es metodológico (el protocolo), no el motor en bruto.
+
+### Las 4 mejoras acordadas (Eloy las eligió todas)
+
+1. **SCA - Dependencias vulnerables (HECHO).** Nuevo motor OSV: lee `requirements.txt`
+   y consulta la API gratuita de Google OSV (sin API key) para detectar librerías con
+   CVE conocidos. Cubre OWASP A06:2021, una categoría entera que antes no se tocaba.
+   Prueba real: 5 librerías viejas arrojaron 69 CVE reales. Se agrupan por librería
+   (una tarjeta con conteo, no 69 tarjetas). Severidad dinámica: >10 CVE = Alta.
+2. **Scoring + enfoque IA (HECHO).** Función `calcular_riesgo()`: suma ponderada por
+   severidad (Alta=10, Media-Alta=5, Media=2, Baja=1), tope de 100, nivel
+   Bajo/Medio/Alto/Crítico. Inspirado en CVSS. Se muestra en consola y en la portada
+   del PDF con color.
+3. **Reporte que educa + archivos sensibles (HECHO).** (a) Archivos con nombres
+   críticos (login, auth, db, config, admin...) se marcan `[ARCHIVO SENSIBLE]` y van
+   primero. (b) Campo `impacto` en cada hallazgo que explica el daño real en lenguaje
+   claro; genérico por severidad para Bandit/Semgrep/OSV.
+4. **AST para Python (PENDIENTE).** Único que queda. Análisis estructural para reducir
+   falsos positivos en las reglas propias.
+
+### Decisiones técnicas
+
+- Se usó `requests` (no urllib) para la API OSV: código más legible y defendible.
+  Se agregó a la autoinstalación de dependencias.
+- El impacto va ANTES de la corrección (primero el porqué es peligroso, luego el remedio).
+- La severidad por archivo sensible NO se altera (se descartó la opción B): se prioriza
+  el orden pero no se distorsiona la metodología de severidad, para no complicar la
+  defensa.
+
+### Nueva rutina de trabajo
+
+Eloy pidió que se le recuerde hacer commit después de cada cambio que funcione (ya
+perdió trabajo antes por un formateo). Se hará de ahora en adelante.
+
+### Casos de prueba creados
+
+- `ejemplos/proyecto_vulnerable/requirements.txt` — librerías con CVE conocidos.
+- `ejemplos/proyecto_vulnerable/login.py` — SQL injection + credencial en archivo
+  con nombre sensible (para probar priorización).
+
+---
+
 ## 2026-06-29 — Sesión de implementación completa
 
 ### Decisiones tomadas

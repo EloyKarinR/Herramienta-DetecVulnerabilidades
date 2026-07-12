@@ -63,9 +63,56 @@ error reveladores, configuración insegura.
 
 ## Estado actual del código
 
-**IMPORTANTE:** Eloy perdió los archivos al formatear su laptop. Hay que regenerar
-`auditoria.py` desde cero. El código a reconstruir es el siguiente, que ya estaba
-funcionando y validado antes del formateo:
+**IMPORTANTE:** La herramienta está funcionando y probada con un sistema real
+(Sistema_Inventario). Publicada en GitHub:
+https://github.com/EloyKarinR/Herramienta-DetecVulnerabilidades
+
+### Lo que ya funciona
+
+La herramienta tiene CUATRO motores de detección que se activan según el proyecto:
+
+- **Motor Regex:** 9 reglas propias (SEC-01 a SEC-09) con OWASP, CWE, CVSS,
+  corrección e **impacto** (explicación del daño real en lenguaje claro). Corre
+  siempre, en todos los lenguajes.
+- **Motor Bandit:** análisis de Python/Django/Flask (se activa solo si hay .py).
+- **Motor Semgrep:** PHP, JS, Java, TS, C/C++ (se activa solo si hay esos archivos).
+- **Motor OSV (SCA):** lee `requirements.txt` y consulta la API gratuita de Google
+  OSV para detectar librerías con vulnerabilidades conocidas (CVE reales). Cubre
+  OWASP A06:2021. Se activa solo si hay `requirements.txt`. Requiere internet.
+
+Otras capacidades:
+
+- **Puntuación de riesgo del proyecto (0-100):** suma ponderada por severidad
+  (Alta=10, Media-Alta=5, Media=2, Baja=1), acotada a 100, traducida a nivel
+  (Bajo/Medio/Alto/Crítico). Se muestra en consola y en la portada del PDF.
+- **Priorización de archivos sensibles:** los hallazgos en archivos con nombres
+  críticos (login, auth, db, config, admin, usuario...) se marcan
+  `[ARCHIVO SENSIBLE]` y se ordenan primero en el reporte.
+- CLI con `--proyecto` apuntando a cualquier carpeta.
+- Autoinstalación de dependencias: `fpdf2`, `bandit`, `semgrep`, `requests`.
+- Reporte PDF en español: portada con nivel de riesgo + resumen ejecutivo +
+  hallazgos detallados (con impacto y corrección).
+- La herramienta se excluye a sí misma del escaneo automáticamente.
+- Filtro de carpetas ignoradas (node_modules, venv, .git, etc.) y de comentarios.
+- Casos de prueba en `ejemplos/`: `proyecto_vulnerable/` (requirements.txt con
+  librerías vulnerables + login.py con SQL injection y credencial) y
+  `ejemplo_vulne.py`.
+
+### Flujo de uso (para el estudiante)
+```
+git clone https://github.com/EloyKarinR/Herramienta-DetecVulnerabilidades.git
+cd Herramienta-DetecVulnerabilidades
+python auditoria.py --proyecto ../mi-sistema
+```
+Primera vez instala dependencias sola. El PDF se guarda en la carpeta del proyecto auditado.
+
+### Código de referencia — VERSIÓN HISTÓRICA v1 (NO usar como referencia actual)
+
+> ADVERTENCIA: el bloque de abajo es la versión 1 (solo 3 reglas, sin motores
+> externos). El código REAL y actual está en `auditoria.py` en el repo y tiene
+> 4 motores (Regex, Bandit, Semgrep, OSV), puntuación de riesgo, priorización de
+> archivos sensibles y campo de impacto. Para la arquitectura actual ver
+> `docs/arquitectura.md`. Se conserva abajo solo como registro histórico.
 
 ```python
 import argparse
@@ -191,36 +238,43 @@ print("<div>" + nombre + "</div>")
 
 Prueba con: `python auditoria.py --proyecto .`
 
-## Mejoras pendientes (siguiente paso de programación)
+## Próximos pasos de programación
 
-Reducir falsos positivos, porque la herramienta se autodetecta y marca comentarios:
-
-- **Mejora 1:** constante `CARPETAS_IGNORADAS` (node_modules, vendor, venv, .git,
-  __pycache__, .venv) y filtrar subcarpetas dentro de `os.walk` con
-  `subcarpetas[:] = [...]` (modificación in-place para que os.walk no entre en ellas).
-- **Mejora 2:** función `es_comentario(linea)` que detecta líneas que empiezan con
-  `#`, `//`, `*`, `/*`, `<!--`, y usarla en las tres detectoras así:
-  `if not es_comentario(linea) and patron.search(linea):`
+1. [HECHO] Análisis SCA de dependencias (OSV), puntuación de riesgo, priorización
+   de archivos sensibles y reporte educativo (campo `impacto`).
+2. **AST para Python** — análisis estructural (no solo texto) para reducir falsos
+   positivos en las reglas propias. Es el único pendiente de las 4 mejoras acordadas
+   con Eloy para "sofisticar" la herramienta.
+3. **README.md** — instrucciones claras para que los estudiantes clonen y usen la
+   herramienta desde GitHub.
+4. **Casos de estudio** — ejecutar la herramienta sobre sistemas reales para el
+   Capítulo IV de la monografía.
 
 ## Limitaciones conocidas (material valioso para el Capítulo IV)
 
-- La detección por regex genera FALSOS POSITIVOS reales: la herramienta se detecta a
-  sí misma porque su código contiene las palabras de los patrones (SELECT, password,
-  etc.) y marca comentarios. Este hallazgo se documenta como aporte metodológico y
-  motiva la integración de Semgrep en la siguiente fase.
+- La detección por Regex genera FALSOS POSITIVOS reales (marca texto sin entender el
+  contexto). Mitigado con: filtro de comentarios, autoexclusión de la herramienta, y
+  los motores Bandit/Semgrep que sí usan AST. El pendiente AST para las reglas propias
+  reduciría aún más los falsos positivos.
+- El motor OSV requiere conexión a internet (consulta la API de Google OSV en vivo).
+- La puntuación de riesgo (0-100) es una heurística metodológica propia, inspirada en
+  la escala CVSS; los pesos por severidad (10/5/2/1) son una decisión defendible, no
+  una ley universal. Documentar esta justificación para la defensa.
+- El AST solo aplicaría a Python; PHP/JS/Java/C dependen de Semgrep + Regex.
+- No simula ataques: es análisis estático de código, no un pentest.
 
 ## Hoja de ruta (roadmap)
 
-1. [HECHO antes del formateo, regenerar] CLI básico + descubrimiento de archivos + 3
-   reglas por regex.
-2. [PRÓXIMO] Aplicar las dos mejoras de reducción de falsos positivos.
-3. Generar un reporte presentable (consola legible, luego archivo, p. ej. HTML o JSON).
-4. Integrar Semgrep como motor profesional (multi-lenguaje, sin tantos falsos
-   positivos).
-5. Ampliar el checklist (familias 2 y 3 completas).
-6. Casos de estudio de validación: caso principal web + un caso complementario
-   (móvil, API o script). Comparar código auditado vs no auditado.
-7. Publicar en GitHub con README claro para que los estudiantes lo clonen.
+1. [HECHO] CLI básico + descubrimiento de archivos + reglas por Regex.
+2. [HECHO] Mejoras de reducción de falsos positivos (comentarios, carpetas ignoradas).
+3. [HECHO] Reporte presentable en PDF (portada, resumen ejecutivo, hallazgos).
+4. [HECHO] Integrar Bandit y Semgrep como motores multi-lenguaje.
+5. [HECHO] Análisis SCA de dependencias (OSV), scoring de riesgo, archivos sensibles
+   y reporte educativo (impacto).
+6. [PRÓXIMO] AST para Python (reducir falsos positivos en las reglas propias).
+7. [PENDIENTE] README claro para que los estudiantes clonen la herramienta.
+8. [PENDIENTE] Casos de estudio de validación para el Capítulo IV: caso principal web
+   + un caso complementario. Comparar código auditado vs no auditado.
 
 ## Estructura de proyecto propuesta (a futuro)
 

@@ -63,6 +63,29 @@ Los metadatos de OWASP, CWE y CVSS están definidos estáticamente en las reglas
 
 ---
 
+## 7. El motor OSV requiere internet
+
+El análisis de dependencias (SCA) consulta la API de Google OSV **en vivo** por cada
+librería. Sin conexión, ese motor no genera hallazgos (los demás sí funcionan).
+
+## 8. Solo lee dependencias de Python (requirements.txt)
+
+El motor OSV hoy solo interpreta `requirements.txt` (ecosistema PyPI). No lee todavía
+`package.json` (npm) ni `composer.json` (PHP). Mejora futura clara.
+
+## 9. La puntuación de riesgo es una heurística
+
+El puntaje 0-100 usa pesos por severidad (10/5/2/1) inspirados en CVSS. Es una
+**decisión metodológica propia**, razonable y defendible, pero no una medida objetiva
+universal. Debe documentarse como tal en la monografía.
+
+## 10. La priorización de sensibles se basa en el NOMBRE del archivo
+
+`es_archivo_sensible()` mira el nombre (login, db, config...). Un archivo crítico con
+un nombre no convencional no se detectaría como sensible. Es una heurística simple.
+
+---
+
 ## Vínculos
 
 - [[proyecto]] — Visión general
