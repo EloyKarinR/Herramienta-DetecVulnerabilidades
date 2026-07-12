@@ -56,6 +56,8 @@ REGLAS = [
         "severidad": "Alta",
         "patron": r"(SELECT|INSERT|UPDATE|DELETE).*(\+|\.|%|f\"|f').*",
         "correccion": "Usar consultas parametrizadas (prepared statements).",
+        "impacto": "Un atacante podria leer, modificar o borrar toda la base de datos "
+                   "(por ejemplo, los datos de todos los estudiantes) sin conocer ninguna contrasena.",
     },
     {
         "id": "SEC-02",
@@ -66,6 +68,8 @@ REGLAS = [
         "severidad": "Alta",
         "patron": r"(echo|print|innerHTML|document\.write).*(\+|\.|\$_|f\"|f').*",
         "correccion": "Escapar y sanitizar toda salida que incluya datos del usuario. Usar plantillas seguras del framework.",
+        "impacto": "Un atacante podria inyectar codigo malicioso que se ejecuta en el navegador "
+                   "de otros usuarios, robando sus sesiones o redirigiendolos a sitios falsos.",
     },
     {
         "id": "SEC-03",
@@ -76,6 +80,8 @@ REGLAS = [
         "severidad": "Media-Alta",
         "patron": r"(password|passwd|api_key|apikey|secret|token)\s*[=:]\s*[\"'][^\"']+[\"']",
         "correccion": "Mover secretos a variables de entorno o a un gestor de secretos. Nunca escribir credenciales en el código fuente.",
+        "impacto": "Cualquiera con acceso al codigo (o a tu repositorio de GitHub) obtiene estas "
+                   "claves y puede suplantar tu sistema o acceder a servicios pagos a tu nombre.",
     },
     {
         "id": "SEC-04",
@@ -86,6 +92,8 @@ REGLAS = [
         "severidad": "Alta",
         "patron": r"(os\.system|subprocess\.call|subprocess\.run|popen)\s*\(.*(\+|f\"|f').*",
         "correccion": "No pasar datos del usuario a comandos del sistema. Usar listas de argumentos en subprocess sin shell=True.",
+        "impacto": "Un atacante podria ejecutar comandos arbitrarios en el servidor, tomando "
+                   "control total de la maquina donde corre el sistema.",
     },
     {
         "id": "SEC-05",
@@ -96,6 +104,8 @@ REGLAS = [
         "severidad": "Alta",
         "patron": r"open\s*\(.*(\+|f\"|f'|request\.|input\().*",
         "correccion": "Validar y normalizar rutas con os.path.abspath(). Verificar que la ruta resultante esté dentro del directorio permitido.",
+        "impacto": "Un atacante podria leer archivos sensibles del servidor (contrasenas, "
+                   "configuraciones) manipulando la ruta que envia al sistema.",
     },
     {
         "id": "SEC-06",
@@ -106,6 +116,8 @@ REGLAS = [
         "severidad": "Media",
         "patron": r"(DEBUG|debug)\s*=\s*True",
         "correccion": "Deshabilitar el modo debug en producción. Controlar esta configuración con variables de entorno.",
+        "impacto": "Con el modo debug activo, ante cualquier error el sistema muestra al publico "
+                   "detalles internos (rutas, codigo, variables) que facilitan un ataque.",
     },
     {
         "id": "SEC-07",
@@ -116,6 +128,8 @@ REGLAS = [
         "severidad": "Alta",
         "patron": r"(pickle\.loads|yaml\.load\s*\()",
         "correccion": "No deserializar datos de fuentes no confiables. Reemplazar yaml.load() por yaml.safe_load().",
+        "impacto": "Un atacante podria enviar datos manipulados que, al ser procesados, ejecuten "
+                   "codigo malicioso en el servidor.",
     },
     {
         "id": "SEC-08",
@@ -126,6 +140,8 @@ REGLAS = [
         "severidad": "Alta",
         "patron": r"eval\s*\(.*(\+|f\"|f'|input\(|request\.).*",
         "correccion": "Evitar eval() con datos externos. Para datos simples usar ast.literal_eval().",
+        "impacto": "Un atacante podria hacer que el sistema ejecute cualquier codigo que el "
+                   "escriba, comprometiendo por completo la aplicacion.",
     },
     {
         "id": "SEC-09",
@@ -136,6 +152,8 @@ REGLAS = [
         "severidad": "Media-Alta",
         "patron": r"(hashlib\.md5|hashlib\.sha1)\s*\(",
         "correccion": "Usar SHA-256 o superior para integridad. Para contraseñas usar bcrypt, argon2 o PBKDF2.",
+        "impacto": "MD5 y SHA-1 estan rotos: un atacante puede descifrar las contrasenas "
+                   "guardadas con ellos y acceder a las cuentas de los usuarios.",
     },
 ]
 
@@ -190,6 +208,7 @@ def detectar_por_regex(ruta_archivo, regla):
                         "cwe": regla["cwe"],
                         "cvss": regla["cvss"],
                         "correccion": regla["correccion"],
+                        "impacto": regla["impacto"],
                     })
     except Exception as e:
         print(f"  (No se pudo leer {ruta_archivo}: {e})")
@@ -480,6 +499,23 @@ def calcular_riesgo(hallazgos):
     }
 
 
+# Impacto genérico según severidad, para los hallazgos de Bandit, Semgrep y
+# OSV, que no traen una explicación propia como sí la tienen las reglas Regex.
+IMPACTO_POR_SEVERIDAD = {
+    "Alta":       "Riesgo grave: podria permitir acceso no autorizado, robo o perdida de datos del sistema.",
+    "Media-Alta": "Riesgo considerable: bajo ciertas condiciones un atacante podria comprometer datos o funciones del sistema.",
+    "Media":      "Riesgo moderado: es una mala practica que facilita otros ataques si se combina con mas fallas.",
+    "Baja":       "Riesgo bajo: conviene corregirlo como buena practica de seguridad.",
+}
+
+
+def obtener_impacto(h):
+    """Devuelve la explicación de impacto de un hallazgo: la propia de la regla
+    si la tiene (motor Regex), o una genérica según su severidad (otros motores).
+    """
+    return h.get("impacto") or IMPACTO_POR_SEVERIDAD.get(h.get("severidad", "Baja"), "")
+
+
 def generar_reporte_pdf(hallazgos, ruta_proyecto):
     hoy = date.today()
     fecha_str = f"{hoy.day} de {MESES[hoy.month]} de {hoy.year}"
@@ -644,6 +680,12 @@ def generar_reporte_pdf(hallazgos, ruta_proyecto):
             pdf.set_fill_color(235, 235, 235)
             pdf.multi_cell(w, 6, f"  {codigo}", fill=True, new_x="LMARGIN", new_y="NEXT")
 
+            impacto = limpiar_pdf(obtener_impacto(h))
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_fill_color(253, 237, 237)
+            pdf.set_text_color(150, 40, 40)
+            pdf.multi_cell(w, 6, f"  Impacto: {impacto}", fill=True, new_x="LMARGIN", new_y="NEXT")
+
             correccion = limpiar_pdf(h.get("correccion", ""))
             pdf.set_font("Helvetica", "", 9)
             pdf.set_fill_color(232, 245, 233)
@@ -724,6 +766,7 @@ def main():
             print(f"  OWASP: {h['owasp']}  |  {h['cwe']}  |  CVSS: {h['cvss']}")
             print(f"  Archivo: {h['archivo']} (línea {h['linea']})")
             print(f"  Código:  {h['codigo']}")
+            print(f"  Impacto: {obtener_impacto(h)}")
             print(f"  Corrección: {h['correccion']}\n")
     else:
         print("No se encontraron vulnerabilidades con las reglas actuales.")
