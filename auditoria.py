@@ -157,6 +157,18 @@ REGLAS = [
     },
 ]
 
+# Formatos reales de claves y tokens de servicios conocidos. A diferencia de
+# SEC-03 (que busca la palabra "password"), aquí buscamos el patrón exacto de
+# cada tipo de secreto, lo que da alta precisión y casi cero falsos positivos.
+SECRETOS_CONOCIDOS = [
+    {"nombre": "AWS Access Key ID",   "patron": r"AKIA[0-9A-Z]{16}"},
+    {"nombre": "GitHub Token",        "patron": r"gh[pousr]_[0-9A-Za-z]{30,}"},
+    {"nombre": "Stripe Secret Key",   "patron": r"sk_live_[0-9A-Za-z]{20,}"},
+    {"nombre": "Google API Key",      "patron": r"AIza[0-9A-Za-z\-_]{30,}"},
+    {"nombre": "Slack Token",         "patron": r"xox[baprs]-[0-9A-Za-z-]{10,}"},
+    {"nombre": "Clave privada (PEM)", "patron": r"-----BEGIN [A-Z ]*PRIVATE KEY-----"},
+]
+
 
 def es_comentario(linea):
     limpia = linea.strip()
@@ -210,6 +222,47 @@ def detectar_por_regex(ruta_archivo, regla):
                         "correccion": regla["correccion"],
                         "impacto": regla["impacto"],
                     })
+    except Exception as e:
+        print(f"  (No se pudo leer {ruta_archivo}: {e})")
+    return hallazgos
+
+
+def detectar_secretos(ruta_archivo):
+    """Busca claves y tokens reales de servicios conocidos (AWS, GitHub, Stripe,
+    Google, Slack, claves privadas) dentro de un archivo.
+
+    Nota: aquí NO saltamos los comentarios. Un secreto real es un secreto
+    filtrado aunque esté comentado, y estos patrones son de alta confianza
+    (coinciden con el formato exacto de la clave, no con palabras genéricas).
+    """
+    hallazgos = []
+    try:
+        with open(ruta_archivo, "r", encoding="utf-8", errors="ignore") as f:
+            for numero_linea, linea in enumerate(f, start=1):
+                for secreto in SECRETOS_CONOCIDOS:
+                    if re.search(secreto["patron"], linea):
+                        hallazgos.append({
+                            "archivo": ruta_archivo,
+                            "linea": numero_linea,
+                            "codigo": linea.strip()[:120],
+                            "regla": "SEC-10",
+                            "nombre": f"Secreto expuesto: {secreto['nombre']}",
+                            "severidad": "Alta",
+                            "owasp": "A07:2021",
+                            "cwe": "CWE-798",
+                            "cvss": 8.6,
+                            "correccion": (
+                                "Revocar de inmediato el secreto (ya se considera "
+                                "comprometido) y moverlo a variables de entorno o a un "
+                                "gestor de secretos. Nunca subirlo al repositorio."
+                            ),
+                            "impacto": (
+                                "Cualquiera que vea el codigo o el repositorio puede usar "
+                                "esta clave para suplantar tu sistema, acceder a servicios "
+                                "pagos a tu nombre o entrar a tus datos."
+                            ),
+                            "motor": "Secretos",
+                        })
     except Exception as e:
         print(f"  (No se pudo leer {ruta_archivo}: {e})")
     return hallazgos
@@ -727,7 +780,8 @@ def main():
     print(f"  {'✓' if hay_python else '✗'} Bandit   (Python / Django / Flask)")
     print(f"  {'✓' if hay_otros  else '✗'} Semgrep  (PHP, JavaScript, Java, TypeScript, C/C++)")
     print(f"  {'✓' if hay_deps   else '✗'} OSV      (dependencias vulnerables - requirements.txt)")
-    print(f"  ✓ Regex    (todos los lenguajes)\n")
+    print(f"  ✓ Regex    (todos los lenguajes)")
+    print(f"  ✓ Secretos (claves y tokens expuestos)\n")
 
     todos_los_hallazgos = []
 
@@ -747,6 +801,10 @@ def main():
     for archivo in archivos:
         for regla in REGLAS:
             todos_los_hallazgos.extend(detectar_por_regex(archivo, regla))
+
+    print("Ejecutando escaneo de secretos...")
+    for archivo in archivos:
+        todos_los_hallazgos.extend(detectar_secretos(archivo))
 
     # Marcar hallazgos de archivos sensibles (login, db, config, admin...)
     for h in todos_los_hallazgos:

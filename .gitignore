@@ -12,6 +12,9 @@ __pycache__/
 # Reportes generados
 *.pdf
 
+# Archivo de prueba con secretos (nunca subir secretos al repo)
+ejemplos/proyecto_vulnerable/config.py
+
 # VS Code
 .vscode/
 
