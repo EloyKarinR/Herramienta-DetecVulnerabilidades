@@ -54,6 +54,7 @@ El aporte original está en **el protocolo**, no en el motor de detección en br
 | Bandit | Código con AST | Python, Django, Flask |
 | Semgrep | Código con reglas OWASP | PHP, JS, Java, TS, C/C++ |
 | OSV (SCA) | Dependencias vulnerables (CVE) | requirements.txt (PyPI) |
+| Secretos | Claves y tokens expuestos (SEC-10) | Todos |
 
 Se instalan automáticamente con `pip install -r requirements.txt` (o en la primera
 ejecución). Cada motor se activa solo si el proyecto tiene lo que le corresponde.
@@ -70,6 +71,7 @@ ejecución). Cada motor se activa solo si el proyecto tiene lo que le correspond
 - [x] Integración de Bandit (Python/Django/Flask)
 - [x] Integración de Semgrep (PHP, JS, Java, TS, C/C++)
 - [x] Motor OSV: análisis SCA de dependencias vulnerables (OWASP A06)
+- [x] Motor de secretos: claves y tokens reales por su formato (SEC-10, OWASP A07)
 - [x] Puntuación de riesgo del proyecto (0-100 + nivel Bajo/Medio/Alto/Crítico)
 - [x] Priorización de archivos sensibles (login, db, config, auth)
 - [x] Reporte que educa: campo "impacto" en cada hallazgo
@@ -77,6 +79,7 @@ ejecución). Cada motor se activa solo si el proyecto tiene lo que le correspond
 - [x] Autoinstalación de dependencias (fpdf2, bandit, semgrep, requests)
 - [x] Reporte en PDF en español (portada con riesgo, resumen ejecutivo, hallazgos)
 - [x] La herramienta se excluye a sí misma del análisis automáticamente
+- [x] Pruebas unitarias (test_auditoria.py) que validan la detección
 - [x] Publicado en GitHub
 - [ ] AST para Python (reducir falsos positivos en reglas propias) — PRÓXIMO
 - [ ] README para GitHub

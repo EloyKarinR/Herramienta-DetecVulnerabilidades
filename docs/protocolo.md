@@ -194,6 +194,39 @@ hash = hashlib.md5(password.encode()).hexdigest()
 
 ---
 
+## SEC-10 — Secreto expuesto (claves y tokens)
+
+| Campo | Valor |
+|---|---|
+| OWASP | A07:2021 |
+| CWE | CWE-798 |
+| CVSS | 8.6 (Alto) |
+| Severidad | Alta |
+| Motor | Secretos |
+
+**¿Qué detecta?** Claves y tokens reales de servicios conocidos, buscando su
+**formato exacto** (no solo la palabra). Reconoce: AWS Access Key, GitHub Token,
+Stripe Secret Key, Google API Key, Slack Token y claves privadas (PEM).
+
+**Diferencia con SEC-03:** SEC-03 busca la *palabra* (`password = "..."`), lo que
+genera falsos positivos. SEC-10 busca el *patrón real* de la clave (ej: `AKIA` +
+16 caracteres = AWS), lo que da alta precisión y casi cero falsos positivos.
+
+**Nota:** este motor NO ignora los comentarios. Un secreto filtrado lo es aunque
+esté comentado, y los patrones son de alta confianza.
+
+**Ejemplo vulnerable:**
+```python
+AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE"
+GITHUB_TOKEN = "ghp_ABCdef1234567890ABCdef1234567890XYZ"
+```
+
+**Corrección:** Revocar de inmediato el secreto (ya se considera comprometido) y
+moverlo a variables de entorno o a un gestor de secretos. Nunca subirlo al
+repositorio.
+
+---
+
 ## A06 — Dependencias vulnerables (motor OSV / SCA)
 
 | Campo | Valor |

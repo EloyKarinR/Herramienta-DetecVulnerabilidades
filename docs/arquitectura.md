@@ -19,10 +19,11 @@ python auditoria.py --proyecto ./mi-sistema
          │
          ▼
 3. Ejecutar motores activos
-   ├── Bandit  → hallazgos Python
-   ├── Semgrep → hallazgos PHP/JS/Java/TS/C
-   ├── OSV     → dependencias vulnerables (CVE)
-   └── Regex   → hallazgos complementarios
+   ├── Bandit   → hallazgos Python
+   ├── Semgrep  → hallazgos PHP/JS/Java/TS/C
+   ├── OSV      → dependencias vulnerables (CVE)
+   ├── Regex    → hallazgos complementarios
+   └── Secretos → claves y tokens expuestos
          │
          ▼
 4. Unificar los hallazgos + marcar archivos sensibles
@@ -87,6 +88,12 @@ python auditoria.py --proyecto ./mi-sistema
 - Agrupa por librería (una tarjeta con el conteo de CVE, no una por CVE)
 - Severidad dinámica: más de 10 CVE = Alta, de 1 a 10 = Media-Alta
 - Se activa solo si hay `requirements.txt`. Requiere internet.
+
+### Motor 5: Secretos (claves y tokens expuestos)
+- Busca el formato exacto de claves reales (AWS, GitHub, Stripe, Google, Slack, PEM)
+- Alta precisión: detecta el patrón de la clave, no palabras genéricas (SEC-10)
+- NO ignora comentarios: un secreto filtrado lo es aunque esté comentado
+- Corre siempre, sobre todos los archivos
 
 ---
 
