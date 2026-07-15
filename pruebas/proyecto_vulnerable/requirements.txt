@@ -1,9 +1,0 @@
-# Archivo de prueba con versiones ANTIGUAS y VULNERABLES a propósito.
-# Sirve para demostrar el análisis SCA (dependencias vulnerables).
-# NO usar estas versiones en un proyecto real.
-
-Django==2.0.0
-Flask==0.12.2
-PyYAML==3.13
-requests==2.19.0
-urllib3==1.24.1

@@ -109,16 +109,24 @@ Otras capacidades:
 ```
 auditor-ia/
   auditoria.py               # programa principal (los 5 motores, todo aquí)
-  test_auditoria.py          # pruebas unitarias
+  test_auditoria.py          # pruebas unitarias (12, autocontenidas)
   requirements.txt           # bandit, semgrep, fpdf2, requests
   README.md                  # instrucciones para el estudiante
   CLAUDE.md
-  pruebas/
-    proyecto_vulnerable/     # fixtures que usa test_auditoria.py
+  .gitignore
 ```
+
+Eso es TODO lo que ve el estudiante al clonar. Antes de agregar un archivo aquí,
+preguntarse: **¿el estudiante lo necesita para USAR la herramienta?** Si no, va al
+repo de la monografía.
 
 `auditoria.py` es monolítico a propósito. Dividirlo en `core/` no aporta a la
 monografía y sí arriesga romper lo que ya funciona.
+
+Las pruebas son **autocontenidas**: crean sus propios archivos temporales con
+`tempfile` y los borran. No dependen de ninguna carpeta de fixtures (por eso se
+eliminó `pruebas/`, que el estudiante no necesitaba ver). El material antiguo se
+conservó en `monografia-auditoria-ia/material_historico/`.
 
 ## Bugs importantes corregidos (material para el Cap. IV)
 

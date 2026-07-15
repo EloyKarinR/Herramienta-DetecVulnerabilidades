@@ -84,17 +84,13 @@ Python, Bandit ni se ejecuta.
 
 ## Probar que funciona
 
-El repositorio incluye un proyecto de prueba con vulnerabilidades a propósito:
-
-```bash
-python auditoria.py --proyecto pruebas/proyecto_vulnerable
-```
-
-Y las pruebas automáticas de la herramienta:
+La herramienta trae pruebas automáticas que verifican que detecta correctamente:
 
 ```bash
 python -m unittest test_auditoria -v
 ```
+
+Si todas pasan (`OK`), la herramienta está lista para auditar tu proyecto.
 
 ---
 
