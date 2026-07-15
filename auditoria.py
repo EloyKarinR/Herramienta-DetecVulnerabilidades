@@ -2,10 +2,20 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from datetime import date
 import importlib.util
+
+# La consola de Windows suele usar cp1252, que no sabe imprimir simbolos como
+# los checks ni las tildes, y la herramienta reventaba con UnicodeEncodeError.
+# Forzamos UTF-8; errors="replace" garantiza que nunca truene por un caracter.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 
 
@@ -327,20 +337,58 @@ def detectar_con_bandit(ruta):
     return hallazgos
 
 
+def ruta_semgrep():
+    """Localiza el ejecutable de Semgrep.
+
+    Desde Semgrep 1.38 ya NO se puede invocar con "python -m semgrep": responde
+    con un aviso de deprecación en vez de resultados. Hay que ejecutar el
+    binario directamente, así que primero lo buscamos en el PATH y, si no está
+    (caso típico en Windows), lo buscamos junto al intérprete de Python.
+    """
+    ruta = shutil.which("semgrep")
+    if ruta:
+        return ruta
+
+    carpeta = os.path.dirname(sys.executable)
+    for sub in ("Scripts", "bin", ""):
+        for nombre in ("semgrep.exe", "semgrep"):
+            posible = os.path.join(carpeta, sub, nombre)
+            if os.path.isfile(posible):
+                return posible
+    return None
+
+
 def detectar_con_semgrep(ruta):
     hallazgos = []
+
+    ejecutable = ruta_semgrep()
+    if not ejecutable:
+        print("  [AVISO] No se encontró el ejecutable de Semgrep.")
+        print("          El análisis de PHP/JS/Java/C NO se realizó.")
+        return hallazgos
+
     exclusiones = [arg for c in CARPETAS_IGNORADAS for arg in ["--exclude", c]]
     try:
         resultado = subprocess.run(
-            [sys.executable, "-m", "semgrep", "scan",
+            [ejecutable, "scan",
              "--config", "p/owasp-top-ten",
              "--json", "--quiet",
              *exclusiones,
              ruta],
             capture_output=True,
             text=True,
-            timeout=180,
+            timeout=300,
         )
+
+        # Si no devolvió nada, algo falló: hay que avisarlo, NO callarlo.
+        # Un reporte de "0 vulnerabilidades" con un motor caído es un falso
+        # "todo está bien", lo más peligroso en una herramienta de auditoría.
+        if not resultado.stdout.strip():
+            print("  [AVISO] Semgrep no devolvió resultados. El análisis de")
+            print("          PHP/JS/Java/C NO se realizó. Detalle:")
+            print(f"          {resultado.stderr.strip()[:300]}")
+            return hallazgos
+
         datos = json.loads(resultado.stdout)
         for r in datos.get("results", []):
             meta = r["extra"].get("metadata", {})
@@ -358,9 +406,10 @@ def detectar_con_semgrep(ruta):
                 "motor":      "Semgrep",
             })
     except FileNotFoundError:
-        print("  (Semgrep no está instalado, omitiendo análisis multi-lenguaje)")
+        print("  [AVISO] Semgrep no está instalado. El análisis de PHP/JS/Java/C NO se realizó.")
     except Exception as e:
-        print(f"  (Error al ejecutar Semgrep: {e})")
+        print(f"  [AVISO] Error al ejecutar Semgrep: {e}")
+        print("          El análisis de PHP/JS/Java/C NO se realizó.")
     return hallazgos
 
 

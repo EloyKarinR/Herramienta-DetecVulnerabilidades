@@ -41,7 +41,7 @@ class TestDeteccionEnArchivos(unittest.TestCase):
     herramienta las detecte. Es la validación de que el motor funciona.
     """
 
-    CARPETA = os.path.join("ejemplos", "proyecto_vulnerable")
+    CARPETA = os.path.join("pruebas", "proyecto_vulnerable")
 
     def reglas_detectadas(self, nombre_archivo):
         """Corre las reglas Regex + el escaneo de secretos sobre un archivo y
