@@ -12,13 +12,42 @@ corregirlas**, en un reporte PDF en español.
 
 ---
 
-## Cómo se usa (3 pasos)
+## Paso 0: instala Python (una sola vez)
 
-**1. Clona la herramienta**
+La herramienta es un programa de Python, así que tu computadora necesita tenerlo
+instalado. Las demás dependencias (Bandit, Semgrep, etc.) se instalan solas; Python
+es lo único que debes poner tú.
+
+**¿Ya tienes Python?** Abre una terminal (en Windows: busca "cmd" o "PowerShell") y
+escribe:
+```bash
+python --version
+```
+- Si ves algo como `Python 3.11.5`, ya lo tienes → salta al Paso 1.
+- Si dice `'python' no se reconoce...`, instálalo así:
+
+1. Entra a **https://www.python.org/downloads/** y descarga la última versión.
+2. Abre el instalador y, en la **primera pantalla**, marca la casilla
+   **☑ "Add Python to PATH"** antes de dar "Install Now".
+   > ⚠️ Este paso es el que casi todos olvidan. Sin esa casilla, el comando
+   > `python` no funcionará.
+3. Cierra y vuelve a abrir la terminal, y comprueba de nuevo con `python --version`.
+
+---
+
+## Cómo se usa
+
+**1. Descarga la herramienta**
+
+*Opción A — si tienes Git:*
 ```bash
 git clone https://github.com/EloyKarinR/Herramienta-DetecVulnerabilidades.git
 cd Herramienta-DetecVulnerabilidades
 ```
+
+*Opción B — sin Git (más fácil):* en la página del repositorio en GitHub, pulsa el
+botón verde **"Code" → "Download ZIP"**, descomprime la carpeta y ábrela en una
+terminal.
 
 **2. Apúntala a tu proyecto**
 ```bash
@@ -30,13 +59,15 @@ python auditoria.py --proyecto C:\ruta\a\mi-sistema
 Se genera un PDF dentro de la carpeta de tu proyecto:
 `reporte_auditoria_AAAA-MM-DD.pdf`
 
-**No necesitas instalar nada más.** La primera vez, la herramienta instala sus
-dependencias sola (tarda un par de minutos). Tampoco necesitas ejecutar tu sistema
-ni tener la base de datos levantada: solo lee el código.
+> **La primera vez tarda 2-3 minutos** instalando sus dependencias (Semgrep es
+> grande). Es normal: **no cierres la terminal** aunque parezca que no pasa nada.
+> Las siguientes veces arranca de inmediato. No necesitas ejecutar tu sistema ni
+> tener la base de datos levantada: la herramienta solo lee el código.
 
 ### Requisitos
-- Python 3.8 o superior
-- Conexión a internet (para analizar las dependencias)
+- **Python 3.8 o superior** (ver Paso 0)
+- **Conexión a internet** la primera vez (para instalar las dependencias y para que
+  Semgrep y OSV descarguen sus datos)
 
 ---
 
@@ -91,6 +122,36 @@ python -m unittest test_auditoria -v
 ```
 
 Si todas pasan (`OK`), la herramienta está lista para auditar tu proyecto.
+
+---
+
+## Problemas comunes
+
+**`'python' no se reconoce como un comando...`**
+Python no está instalado, o al instalarlo no marcaste "Add Python to PATH".
+Reinstálalo siguiendo el Paso 0 y marca esa casilla. En algunas computadoras el
+comando es `py` en vez de `python`.
+
+**Se queda "pegado" un buen rato la primera vez**
+Es normal: está descargando e instalando Bandit, Semgrep y las demás dependencias
+(Semgrep es grande). Dale 2-3 minutos y no cierres la terminal.
+
+**`error: no se encontró la carpeta '...'`**
+La ruta que pusiste después de `--proyecto` no existe o está mal escrita. Si la ruta
+tiene espacios, enciérrala entre comillas:
+```bash
+python auditoria.py --proyecto "C:\Mis Proyectos\sistema"
+```
+
+**Aparece un `[AVISO]` de que Semgrep no corrió**
+Semgrep necesita internet la primera vez para descargar sus reglas. Revisa tu
+conexión y vuelve a intentarlo. Los demás motores igual funcionan.
+
+**`pip` falla al instalar**
+Asegúrate de tener internet. Si sigue fallando, instala las dependencias a mano:
+```bash
+pip install fpdf2 bandit semgrep requests
+```
 
 ---
 
