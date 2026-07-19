@@ -35,26 +35,65 @@ python --version
 
 ---
 
-## Cómo se usa
+## Paso 1: obtén la herramienta
 
-**1. Descarga la herramienta**
+Hay dos formas. Elige **UNA**. Si no sabes qué es Git, usa la **Opción B (ZIP)**, es
+la más sencilla.
 
-*Opción A — si tienes Git:*
+### Opción A — con Git (`git clone`)
+
+**A.1. ¿Tienes Git?** En una terminal escribe:
+```bash
+git --version
+```
+- Si ves algo como `git version 2.4x.x`, ya lo tienes → pasa al punto A.2.
+- Si dice `'git' no se reconoce...`, instálalo primero:
+  1. Entra a **https://git-scm.com/download/win** — la descarga empieza sola.
+  2. Abre el instalador y ve dando **"Next"** en todas las pantallas (los valores por
+     defecto están bien; no cambies nada).
+  3. Al final pulsa **"Install"** y luego **"Finish"**.
+  4. **Cierra y vuelve a abrir la terminal**, y comprueba con `git --version`.
+
+**A.2. Clona la herramienta:**
 ```bash
 git clone https://github.com/EloyKarinR/Herramienta-DetecVulnerabilidades.git
 cd Herramienta-DetecVulnerabilidades
 ```
+Ya estás dentro de la carpeta de la herramienta. Salta al **Paso 2**.
 
-*Opción B — sin Git (más fácil):* en la página del repositorio en GitHub, pulsa el
-botón verde **"Code" → "Download ZIP"**, descomprime la carpeta y ábrela en una
-terminal.
+### Opción B — sin Git, descargando el ZIP (la más fácil)
 
-**2. Apúntala a tu proyecto**
+1. Entra a la página del repositorio:
+   **https://github.com/EloyKarinR/Herramienta-DetecVulnerabilidades**
+2. Pulsa el botón verde **"< > Code"** y luego **"Download ZIP"**.
+3. Ve a tu carpeta de **Descargas**. Verás un archivo
+   `Herramienta-DetecVulnerabilidades-main.zip`.
+4. **Descomprímelo:** clic derecho sobre el ZIP → **"Extraer todo..."** → **"Extraer"**.
+   Se crea una carpeta con el mismo nombre.
+5. **Abre esa carpeta** (entra hasta ver dentro `auditoria.py`).
+6. **Abre una terminal DENTRO de esa carpeta** (este paso es el importante):
+   - Haz clic en la **barra de direcciones** del Explorador (la que muestra la ruta,
+     arriba), borra lo que diga, escribe **`cmd`** y pulsa **Enter**.
+   - Se abre una ventana negra ya ubicada en la carpeta correcta. ✅
+
+> ¿Cómo sé que la terminal está en el lugar correcto? Escribe `dir` (Enter) y debes
+> ver `auditoria.py` en la lista.
+
+---
+
+## Paso 2: apúntala a tu proyecto
+
+En la terminal (la que abriste en el Paso 1), escribe:
 ```bash
 python auditoria.py --proyecto C:\ruta\a\mi-sistema
 ```
+Cambia `C:\ruta\a\mi-sistema` por la carpeta de **tu** proyecto. Si la ruta tiene
+espacios, ponla entre comillas: `--proyecto "C:\Mis Proyectos\sistema"`.
 
-**3. Abre el reporte**
+> Truco: puedes **arrastrar la carpeta de tu proyecto** desde el Explorador hasta la
+> terminal y la ruta se escribe sola.
+
+## Paso 3: abre el reporte
 
 Se genera un PDF dentro de la carpeta de tu proyecto:
 `reporte_auditoria_AAAA-MM-DD.pdf`
