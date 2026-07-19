@@ -21,6 +21,9 @@ pruebas/proyecto_vulnerable/config.py
 # Obsidian
 docs/.obsidian/
 
+# Contexto de Claude Code (uso interno, el estudiante no lo necesita)
+CLAUDE.md
+
 # Sistema operativo
 .DS_Store
 Thumbs.db
