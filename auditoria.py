@@ -44,7 +44,13 @@ from fpdf import FPDF
 import requests
 
 EXTENSIONES_CODIGO = (".py", ".php", ".js", ".java", ".ts", ".c", ".cpp", ".h")
-CARPETAS_IGNORADAS = {"node_modules", "vendor", "venv", ".venv", ".git", "__pycache__"}
+# Carpetas que NO se auditan: entornos, control de versiones y librerías de
+# terceros (el estudiante no escribió ese código, así que no es su responsabilidad).
+# Se comparan en minúsculas para que "PHPMailer" o "Libs" también se ignoren.
+CARPETAS_IGNORADAS = {
+    "node_modules", "vendor", "vendors", "venv", ".venv", ".git",
+    "__pycache__", "libs", "phpmailer", "third_party", "packages",
+}
 CARPETA_HERRAMIENTA = os.path.dirname(os.path.abspath(__file__))
 
 # Palabras clave en nombres de archivo que sugieren funciones críticas del
@@ -216,7 +222,7 @@ def buscar_archivos_codigo(ruta):
             continue
         subcarpetas[:] = [
             s for s in subcarpetas
-            if s not in CARPETAS_IGNORADAS
+            if s.lower() not in CARPETAS_IGNORADAS
             and os.path.abspath(os.path.join(carpeta_actual, s)) != CARPETA_HERRAMIENTA
         ]
         for archivo in archivos:
