@@ -83,7 +83,14 @@ REGLAS = [
         "cwe": "CWE-79",
         "cvss": 8.8,
         "severidad": "Alta",
-        "patron": r"(echo|print|innerHTML|document\.write).*(\+|\.|\$_|f\"|f').*",
+        # Exige una salida (echo/print/innerHTML/document.write) que realmente
+        # incluya una VARIABLE: una comilla seguida de concatenación (. o +) y una
+        # variable, o una superglobal de PHP ($_GET/$_POST...), o un f-string.
+        # Antes el patrón marcaba cualquier punto, incluido el punto final de un
+        # texto fijo ("Usuario no encontrado."), lo que causaba muchos falsos positivos.
+        "patron": r"(echo|print|innerHTML|document\.write).*([\"']\s*[.+]\s*\$?\w|\$_(GET|POST|REQUEST|COOKIE|SESSION)|f[\"'])",
+        # Descarta salidas ya escapadas y datos del sistema que no vienen del usuario.
+        "anti_patron": r"(htmlspecialchars|htmlentities|urlencode|real_escape|toLocaleTimeString|toLocaleDateString|include\s*\()",
         "correccion": "Escapar y sanitizar toda salida que incluya datos del usuario. Usar plantillas seguras del framework.",
         "impacto": "Un atacante podria inyectar codigo malicioso que se ejecuta en el navegador "
                    "de otros usuarios, robando sus sesiones o redirigiendolos a sitios falsos.",
