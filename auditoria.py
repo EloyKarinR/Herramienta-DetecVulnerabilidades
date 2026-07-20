@@ -64,7 +64,14 @@ REGLAS = [
         "cwe": "CWE-89",
         "cvss": 9.8,
         "severidad": "Alta",
-        "patron": r"(SELECT|INSERT|UPDATE|DELETE).*(\+|\.|%|f\"|f').*",
+        # Exige una consulta SQL REAL (una palabra clave con su estructura:
+        # SELECT..FROM, INSERT INTO, UPDATE..SET, DELETE..FROM) Y ADEMÁS una señal
+        # de concatenación de variable: comilla seguida de + o . (Python/PHP),
+        # un f-string, o un marcador de formato (%s, .format). Así se evita
+        # confundir "querySelector" de JS o un <select> de HTML con SQL.
+        "patron": r"(SELECT.+FROM|INSERT\s+INTO|UPDATE.+SET|DELETE.+FROM).*([\"']\s*[.+]|f[\"']|%[sd]|\.format\()",
+        # Descarta consultas preparadas (seguras) y código JavaScript del DOM.
+        "anti_patron": r"(prepare\s*\(|->prepare|querySelector|getElementById|addEventListener)",
         "correccion": "Usar consultas parametrizadas (prepared statements).",
         "impacto": "Un atacante podria leer, modificar o borrar toda la base de datos "
                    "(por ejemplo, los datos de todos los estudiantes) sin conocer ninguna contrasena.",
@@ -215,11 +222,21 @@ def buscar_archivos_codigo(ruta):
 def detectar_por_regex(ruta_archivo, regla):
     hallazgos = []
     patron = re.compile(regla["patron"], re.IGNORECASE)
+    # Un "anti-patrón" (opcional) marca líneas que parecen coincidir pero que en
+    # realidad son seguras o no son lo que buscamos (p. ej. consultas preparadas,
+    # o código JavaScript que contiene la palabra "select"). Si aparece, se
+    # descarta el hallazgo: así se reducen los falsos positivos.
+    anti = re.compile(regla["anti_patron"], re.IGNORECASE) if regla.get("anti_patron") else None
     try:
         with open(ruta_archivo, "r", encoding="utf-8", errors="ignore") as f:
             for numero_linea, linea in enumerate(f, start=1):
-                if not es_comentario(linea) and patron.search(linea):
-                    hallazgos.append({
+                if es_comentario(linea):
+                    continue
+                if not patron.search(linea):
+                    continue
+                if anti and anti.search(linea):
+                    continue
+                hallazgos.append({
                         "archivo": ruta_archivo,
                         "linea": numero_linea,
                         "codigo": linea.strip(),
