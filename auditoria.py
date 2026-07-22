@@ -97,8 +97,10 @@ REGLAS = [
         # Antes el patrón marcaba cualquier punto, incluido el punto final de un
         # texto fijo ("Usuario no encontrado."), lo que causaba muchos falsos positivos.
         "patron": r"(echo|print|innerHTML|outerHTML|document\.write).*([\"']\s*[.+]\s*\$?\w|\$_(GET|POST|REQUEST|COOKIE|SESSION)|f[\"']|\$\{)|(innerHTML|outerHTML)\s*\+?=\s*[A-Za-z_$]",
-        # Descarta salidas ya escapadas y datos del sistema que no vienen del usuario.
-        "anti_patron": r"(htmlspecialchars|htmlentities|urlencode|real_escape|toLocaleTimeString|toLocaleDateString|include\s*\()",
+        # Descarta salidas ya escapadas, datos del sistema, y salida a CONSOLA
+        # (PHP_EOL, STDOUT, fwrite): un echo con PHP_EOL es un script de terminal
+        # (CLI), no una página web, así que no puede ser XSS.
+        "anti_patron": r"(htmlspecialchars|htmlentities|urlencode|real_escape|toLocaleTimeString|toLocaleDateString|include\s*\(|PHP_EOL|\bSTDOUT\b|\bSTDERR\b|fwrite\s*\()",
         # XSS es una vulnerabilidad web; no aplica a scripts Python de consola
         # (un print() va a la terminal, no al HTML de un navegador).
         "no_extensiones": (".py",),
