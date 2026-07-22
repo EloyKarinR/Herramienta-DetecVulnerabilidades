@@ -76,8 +76,10 @@ REGLAS = [
         # un f-string, o un marcador de formato (%s, .format). Así se evita
         # confundir "querySelector" de JS o un <select> de HTML con SQL.
         "patron": r"(SELECT.+FROM|INSERT\s+INTO|UPDATE.+SET|DELETE.+FROM).*([\"']\s*[.+]|f[\"']|%[sd]|\.format\()",
-        # Descarta consultas preparadas (seguras) y código JavaScript del DOM.
-        "anti_patron": r"(prepare\s*\(|->prepare|querySelector|getElementById|addEventListener)",
+        # Descarta consultas preparadas (seguras), código JavaScript del DOM y los
+        # import/export de módulos (JS/TS): "import {...DELETE...} from './ruta'" no
+        # es SQL, aunque contenga las palabras DELETE/SELECT y una ruta './...'.
+        "anti_patron": r"(prepare\s*\(|->prepare|querySelector|getElementById|addEventListener|\bimport\s|\bexport\s|\brequire\s*\(|\bfrom\s+[\"'])",
         "correccion": "Usar consultas parametrizadas (prepared statements).",
         "impacto": "Un atacante podria leer, modificar o borrar toda la base de datos "
                    "(por ejemplo, los datos de todos los estudiantes) sin conocer ninguna contrasena.",
@@ -112,6 +114,9 @@ REGLAS = [
         "cvss": 7.5,
         "severidad": "Media-Alta",
         "patron": r"(password|passwd|api_key|apikey|secret|token)\s*[=:]\s*[\"'][^\"']+[\"']",
+        # No es una credencial quemada si el valor se GENERA (randomUUID, crypto) o
+        # viene de una variable de entorno (process.env, getenv) — eso es lo correcto.
+        "anti_patron": r"(randomUUID|crypto\.|uuid|faker|process\.env|import\.meta\.env|getenv)",
         "correccion": "Mover secretos a variables de entorno o a un gestor de secretos. Nunca escribir credenciales en el código fuente.",
         "impacto": "Cualquiera con acceso al codigo (o a tu repositorio de GitHub) obtiene estas "
                    "claves y puede suplantar tu sistema o acceder a servicios pagos a tu nombre.",
@@ -217,6 +222,17 @@ def es_archivo_sensible(ruta_archivo):
     return any(clave in nombre for clave in ARCHIVOS_SENSIBLES)
 
 
+def es_archivo_de_prueba(ruta_archivo):
+    """Indica si el archivo es de pruebas (test/spec/mock). Estos archivos
+    contienen datos FALSOS por diseño (contraseñas y tokens de mentira como
+    'password123'), así que auditarlos genera falsos positivos. Además no son
+    código que llegue a producción.
+    """
+    n = os.path.basename(ruta_archivo).lower()
+    return (".test." in n or ".spec." in n or ".mock." in n
+            or n.startswith("test_") or n.endswith("_test.py"))
+
+
 def buscar_archivos_codigo(ruta):
     archivos_encontrados = []
     for carpeta_actual, subcarpetas, archivos in os.walk(ruta):
@@ -229,7 +245,7 @@ def buscar_archivos_codigo(ruta):
             and os.path.abspath(os.path.join(carpeta_actual, s)) != CARPETA_HERRAMIENTA
         ]
         for archivo in archivos:
-            if archivo.endswith(EXTENSIONES_CODIGO):
+            if archivo.endswith(EXTENSIONES_CODIGO) and not es_archivo_de_prueba(archivo):
                 ruta_completa = os.path.join(carpeta_actual, archivo)
                 archivos_encontrados.append(ruta_completa)
     return archivos_encontrados
