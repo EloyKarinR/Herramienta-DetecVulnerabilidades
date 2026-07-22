@@ -97,6 +97,9 @@ REGLAS = [
         "patron": r"(echo|print|innerHTML|outerHTML|document\.write).*([\"']\s*[.+]\s*\$?\w|\$_(GET|POST|REQUEST|COOKIE|SESSION)|f[\"']|\$\{)|(innerHTML|outerHTML)\s*\+?=\s*[A-Za-z_$]",
         # Descarta salidas ya escapadas y datos del sistema que no vienen del usuario.
         "anti_patron": r"(htmlspecialchars|htmlentities|urlencode|real_escape|toLocaleTimeString|toLocaleDateString|include\s*\()",
+        # XSS es una vulnerabilidad web; no aplica a scripts Python de consola
+        # (un print() va a la terminal, no al HTML de un navegador).
+        "no_extensiones": (".py",),
         "correccion": "Escapar y sanitizar toda salida que incluya datos del usuario. Usar plantillas seguras del framework.",
         "impacto": "Un atacante podria inyectar codigo malicioso que se ejecuta en el navegador "
                    "de otros usuarios, robando sus sesiones o redirigiendolos a sitios falsos.",
@@ -234,6 +237,12 @@ def buscar_archivos_codigo(ruta):
 
 def detectar_por_regex(ruta_archivo, regla):
     hallazgos = []
+    # Algunas reglas no aplican a ciertos lenguajes. Ej: el XSS (SEC-02) es una
+    # vulnerabilidad WEB; un print() de Python escribe en la terminal, no en una
+    # página, así que la regla de XSS NO debe evaluarse en archivos .py.
+    no_ext = regla.get("no_extensiones")
+    if no_ext and ruta_archivo.lower().endswith(no_ext):
+        return hallazgos
     patron = re.compile(regla["patron"], re.IGNORECASE)
     # Un "anti-patrón" (opcional) marca líneas que parecen coincidir pero que en
     # realidad son seguras o no son lo que buscamos (p. ej. consultas preparadas,
