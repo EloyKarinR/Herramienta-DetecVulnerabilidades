@@ -94,7 +94,7 @@ REGLAS = [
         # variable, o una superglobal de PHP ($_GET/$_POST...), o un f-string.
         # Antes el patrón marcaba cualquier punto, incluido el punto final de un
         # texto fijo ("Usuario no encontrado."), lo que causaba muchos falsos positivos.
-        "patron": r"(echo|print|innerHTML|document\.write).*([\"']\s*[.+]\s*\$?\w|\$_(GET|POST|REQUEST|COOKIE|SESSION)|f[\"'])",
+        "patron": r"(echo|print|innerHTML|outerHTML|document\.write).*([\"']\s*[.+]\s*\$?\w|\$_(GET|POST|REQUEST|COOKIE|SESSION)|f[\"']|\$\{)|(innerHTML|outerHTML)\s*\+?=\s*[A-Za-z_$]",
         # Descarta salidas ya escapadas y datos del sistema que no vienen del usuario.
         "anti_patron": r"(htmlspecialchars|htmlentities|urlencode|real_escape|toLocaleTimeString|toLocaleDateString|include\s*\()",
         "correccion": "Escapar y sanitizar toda salida que incluya datos del usuario. Usar plantillas seguras del framework.",
