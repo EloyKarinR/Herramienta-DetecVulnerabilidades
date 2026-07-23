@@ -51,6 +51,15 @@ CARPETAS_IGNORADAS = {
     "node_modules", "vendor", "vendors", "venv", ".venv", ".git",
     "__pycache__", "libs", "phpmailer", "third_party", "packages",
 }
+# Librerías de terceros que suelen venir SUELTAS (fuera de vendor/): no las escribió
+# el autor, así que sus "vulnerabilidades" son ruido. Se comparan como subcadena del
+# nombre en minúsculas (ej: "bootstrap.bundle.js" contiene "bootstrap").
+LIBRERIAS_DE_TERCEROS = (
+    "bootstrap", "jquery", "popper", "fpdf", "tcpdf", "dompdf", "quagga",
+    "select2", "datatables", "moment", "chart", "sweetalert", "fullcalendar",
+    "axios", "lodash", "underscore", "highcharts", "leaflet", "tinymce",
+    "ckeditor", "swiper", "modernizr", "slick",
+)
 CARPETA_HERRAMIENTA = os.path.dirname(os.path.abspath(__file__))
 
 # Palabras clave en nombres de archivo que sugieren funciones críticas del
@@ -235,6 +244,18 @@ def es_archivo_de_prueba(ruta_archivo):
             or n.startswith("test_") or n.endswith("_test.py"))
 
 
+def es_libreria_de_terceros(ruta_archivo):
+    """Indica si el archivo es una librería de terceros suelta (Bootstrap, jQuery,
+    FPDF...) o un archivo minificado (.min.js/.min.css). El autor no escribió ese
+    código, así que auditarlo genera falsos positivos (ej: la constante interna
+    'DATA_API_KEY' de Bootstrap marcada como credencial quemada).
+    """
+    n = os.path.basename(ruta_archivo).lower()
+    if n.endswith((".min.js", ".min.css")):
+        return True
+    return any(lib in n for lib in LIBRERIAS_DE_TERCEROS)
+
+
 def buscar_archivos_codigo(ruta):
     archivos_encontrados = []
     for carpeta_actual, subcarpetas, archivos in os.walk(ruta):
@@ -247,7 +268,9 @@ def buscar_archivos_codigo(ruta):
             and os.path.abspath(os.path.join(carpeta_actual, s)) != CARPETA_HERRAMIENTA
         ]
         for archivo in archivos:
-            if archivo.endswith(EXTENSIONES_CODIGO) and not es_archivo_de_prueba(archivo):
+            if (archivo.endswith(EXTENSIONES_CODIGO)
+                    and not es_archivo_de_prueba(archivo)
+                    and not es_libreria_de_terceros(archivo)):
                 ruta_completa = os.path.join(carpeta_actual, archivo)
                 archivos_encontrados.append(ruta_completa)
     return archivos_encontrados

@@ -39,6 +39,17 @@ class TestFuncionesBasicas(unittest.TestCase):
         # Una línea de código real NO es comentario.
         self.assertFalse(auditoria.es_comentario("x = 1 + 2"))
 
+    def test_libreria_de_terceros_se_reconoce(self):
+        # Librerías de terceros y minificados SÍ deben ignorarse (son ruido).
+        self.assertTrue(auditoria.es_libreria_de_terceros("bootstrap.bundle.js"))
+        self.assertTrue(auditoria.es_libreria_de_terceros("fpdf.php"))
+        self.assertTrue(auditoria.es_libreria_de_terceros("quagga.min.js"))
+
+    def test_codigo_propio_no_es_libreria(self):
+        # El código del propio autor NO debe confundirse con librería.
+        self.assertFalse(auditoria.es_libreria_de_terceros("login.php"))
+        self.assertFalse(auditoria.es_libreria_de_terceros("respaldos.php"))
+
 
 class TestDeteccion(unittest.TestCase):
     """Pruebas sobre código con vulnerabilidades CONOCIDAS.
