@@ -438,6 +438,24 @@ def ruta_semgrep():
     return None
 
 
+def leer_linea_de_archivo(ruta_archivo, numero_linea):
+    """Devuelve el contenido de una línea concreta de un archivo.
+
+    Se usa para mostrar el código REAL de un hallazgo de Semgrep cuando este no lo
+    entrega: para algunas de sus reglas "Pro", Semgrep devuelve el texto
+    'requires login' en vez del código si no se ha hecho `semgrep login`. Como
+    Semgrep sí nos da el número de línea, leemos la línea directamente del archivo.
+    """
+    try:
+        with open(ruta_archivo, "r", encoding="utf-8", errors="ignore") as f:
+            for i, linea in enumerate(f, start=1):
+                if i == numero_linea:
+                    return linea.strip()
+    except OSError:
+        pass
+    return ""
+
+
 def detectar_con_semgrep(ruta):
     hallazgos = []
 
@@ -472,10 +490,15 @@ def detectar_con_semgrep(ruta):
         datos = json.loads(resultado.stdout)
         for r in datos.get("results", []):
             meta = r["extra"].get("metadata", {})
+            # Semgrep a veces devuelve 'requires login' en vez del código real.
+            # En ese caso (o si viene vacío), leemos la línea del archivo nosotros.
+            codigo = r["extra"].get("lines", "").strip()
+            if not codigo or codigo.lower() == "requires login":
+                codigo = leer_linea_de_archivo(r["path"], r["start"]["line"])
             hallazgos.append({
                 "archivo":    r["path"],
                 "linea":      r["start"]["line"],
-                "codigo":     r["extra"].get("lines", "").strip(),
+                "codigo":     codigo,
                 "regla":      r["check_id"].split(".")[-1].upper(),
                 "nombre":     r["extra"]["message"],
                 "severidad":  SEVERIDAD_SEMGREP.get(r["extra"]["severity"], "Media"),
